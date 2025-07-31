@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>聊天机器人示例</title>
+</head>
+<body>
+  <h2>欢迎使用聊天机器人</h2>
+  <p>请在右下角对话框输入内容试试看。</p>
+
+  <!-- ✅ 嵌入 tawk.to -->
+  <script type="text/javascript">
+    var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
+
+    (function () {
+      var s1 = document.createElement("script"),
+        s0 = document.getElementsByTagName("script")[0];
+      s1.async = true;
+      s1.src = 'https://embed.tawk.to/6870c062affcbd1910f86a9f/1ivs6v0e0'; // 替换为你的 Tawk ID
+      s1.charset = 'UTF-8';
+      s1.setAttribute('crossorigin', '*');
+      s0.parentNode.insertBefore(s1, s0);
+    })();
+
+    // 监听访客消息并发送到本地机器人接口
+    Tawk_API.onMessageVisitor = function (message) {
+      console.log("收到访客消息:", message);
+
+      fetch("/chatbot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ question: message })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("机器人回复:", data.answer);
+
+        // ✅ 关键：把机器人的回答显示给访客
+        if (Tawk_API && typeof Tawk_API.say === "function") {
+          Tawk_API.say(data.answer);  // ✅ 自动回复访客
+        }
+
+        // 可选：记录事件
+        Tawk_API.addEvent('机器人自动回复', {
+          description: data.answer
+        });
+      })
+      .catch(error => console.error("机器人错误:", error));
+    };
+
+  </script>
+</body>
+</html>
