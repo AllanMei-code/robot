@@ -26,7 +26,7 @@
     Tawk_API.onMessageVisitor = function (message) {
       console.log("收到访客消息:", message);
 
-      fetch("/chatbot", {
+      fetch("http://3.71.28.18:5000/chatbot", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
