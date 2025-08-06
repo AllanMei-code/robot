@@ -20,6 +20,8 @@
       const messageText = msgObj.text || "";
       console.log("📩 收到访客消息:", messageText);
 
+      alert("✅ 访客消息已触发：" + messageText);  // ✅ 新增弹窗
+
       fetch("http://3.71.28.18:5000/chatbot", {
         method: "POST",
         headers: {
