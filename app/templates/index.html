@@ -23,8 +23,9 @@
     })();
 
     // 监听访客消息并发送到本地机器人接口
-    Tawk_API.onMessageVisitor = function (message) {
-      console.log("收到访客消息:", message);
+    Tawk_API.onMessageVisitor = function (msgObj) {
+      const messageText = msgObj.text || "";  // ✅ 提取文字字段
+      console.log("收到访客消息:", messageText);
 
       fetch("http://3.71.28.18:5000/chatbot", {
         method: "POST",
