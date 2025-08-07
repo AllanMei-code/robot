@@ -1,6 +1,5 @@
 import React from "react";
-import ChatWidget from "./ChatWidget";
-
+import ChatWidget from "./chatwidget.jsx";
 function App() {
   return (
     <div>
