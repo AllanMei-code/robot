@@ -4,6 +4,10 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # 允许跨域，方便前端调试
 
+@app.route("/api/chat", methods=["GET"])
+def chat_get():
+    return "接口 /api/chat 只支持 POST 请求，请使用 POST 方法调用。"
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json()
