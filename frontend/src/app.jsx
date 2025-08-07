@@ -1,10 +1,10 @@
 import React from "react";
-import ChatWidget from "./chatwidget.jsx";
+import chatwidget from "./chatwidget.jsx";
 function App() {
   return (
     <div>
       {/* 页面内容 */}
-      <ChatWidget />
+      <chatwidget />
     </div>
   );
 }
