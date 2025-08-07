@@ -3,6 +3,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
+
+
+app = Flask(__name__)
 CORS(app)  # 允许跨域，方便前端调试
 
 @app.route("/api/chat", methods=["POST"])

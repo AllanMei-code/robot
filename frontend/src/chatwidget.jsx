@@ -24,7 +24,7 @@ const ChatWidget = () => {
     setInput("");
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("http://3.71.28.18:5000/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text }),
