@@ -2,12 +2,14 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 
-frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/dist'))
-print("🚀 Static folder path:", frontend_dist)  # ✅ 打印调试路径
+# 获取当前 app.py 所在目录
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIST = os.path.join(BASE_DIR, "../frontend/dist")
+print("🚀 Static folder path:", FRONTEND_DIST)  # ✅ 打印调试路径
 
 app = Flask(
     __name__,
-    static_folder=frontend_dist,
+    static_folder=FRONTEND_DIST,
     static_url_path='/'
 )
 CORS(app)
