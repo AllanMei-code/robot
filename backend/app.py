@@ -4,10 +4,11 @@ import os
 
 app = Flask(
     __name__,
-    static_folder="frontend/dist",   # ✅ 这里指向打包后的目录
-    static_url_path=""               # ✅ 让 / 映射到 index.html
+    static_folder='../frontend/dist',   # ✅ 这里指向打包后的目录
+    static_url_path='/'               # ✅ 让 / 映射到 index.html
 )
 CORS(app)
+
 
 # ====== 聊天接口 ======
 REPLIES = {
@@ -30,6 +31,8 @@ def chat():
 @app.route("/")
 def serve_index():
     return send_from_directory(app.static_folder, "index.html")
+
+
 
 @app.route("/<path:path>")
 def serve_static(path):
