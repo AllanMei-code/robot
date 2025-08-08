@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>客服机器人测试页</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f7f7f7;
+      margin: 0;
+      padding: 0;
+    }
+    h2 {
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🧪 客服机器人测试页面</h2>
+  <p style="text-align:center;">点击右下角图标打开聊天窗口开始测试。</p>
+
+  <!-- 客服图标 -->
+  <div id="chat-icon" style="position:fixed;bottom:20px;right:20px;z-index:1000;cursor:pointer;">
+    <img src="https://cdn-icons-png.flaticon.com/512/2950/2950661.png" width="60" height="60" />
+  </div>
+
+  <!-- 聊天窗口 -->
+  <div id="chat-widget" style="display:none;position:fixed;bottom:90px;right:20px;width:300px;height:400px;background:#fff;border:1px solid #ccc;z-index:1001;box-shadow:0 4px 12px rgba(0,0,0,0.2);border-radius:10px;overflow:hidden;font-family:sans-serif;">
+    <div style="background:#0a7cff;color:#fff;padding:10px;font-weight:bold;">客服小助手</div>
+    <div id="chat-messages" style="padding:10px;height:300px;overflow-y:auto;font-size:14px;"></div>
+    <div style="display:flex;border-top:1px solid #eee;">
+      <input id="chat-input" type="text" placeholder="请输入..." style="flex:1;border:none;padding:10px;" />
+      <button id="send-btn" style="background:#0a7cff;color:#fff;border:none;padding:10px 15px;cursor:pointer;">发送</button>
+    </div>
+  </div>
+
+  <script>
+    const chatIcon = document.getElementById('chat-icon');
+    const chatWidget = document.getElementById('chat-widget');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    chatIcon.addEventListener('click', () => {
+      chatWidget.style.display = chatWidget.style.display === 'none' ? 'block' : 'none';
+    });
+
+    function appendMessage(sender, text) {
+      const div = document.createElement('div');
+      div.style.margin = '5px 0';
+      div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    sendBtn.addEventListener('click', () => {
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      appendMessage('我', message);
+      chatInput.value = '';
+
+      fetch('http://3.71.28.18:5000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      })
+      .then(res => res.json())
+      .then(data => {
+        appendMessage('客服', data.reply || '（无回复）');
+      })
+      .catch(err => {
+        console.error('请求失败:', err);
+        appendMessage('客服', '系统异常，请稍后再试。');
+      });
+    });
+
+    chatInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+  </script>
+
+</body>
+</html>
