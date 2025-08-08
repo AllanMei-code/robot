@@ -3,6 +3,8 @@ from flask_cors import CORS
 import os
 
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/dist'))
+print("🚀 Static folder path:", frontend_dist)  # ✅ 打印调试路径
+
 app = Flask(
     __name__,
     static_folder=frontend_dist,
