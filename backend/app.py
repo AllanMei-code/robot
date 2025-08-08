@@ -2,10 +2,11 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/dist'))
 app = Flask(
     __name__,
-    static_folder='../frontend/dist',   # ✅ 这里指向打包后的目录
-    static_url_path='/'               # ✅ 让 / 映射到 index.html
+    static_folder=frontend_dist,
+    static_url_path='/'
 )
 CORS(app)
 
