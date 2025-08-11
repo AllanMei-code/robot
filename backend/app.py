@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from googletrans import Translator
+from deep_translator import GoogleTranslator
 from logic import get_bot_reply
 
 app = Flask(__name__)
@@ -26,19 +27,25 @@ def process_customer_message(raw_msg):
     return msg_cn, reply_cn, reply_for_customer
 
 
-@app.route("/chat", methods=["POST"])
+@app.route('/chat', methods=['POST'])
 def chat():
-    data = request.get_json()
-    user_message = data.get("message", "").strip()
+    data = request.json
+    msg = data.get('message', '')
+    # 法语转中文
+    msg_zh = GoogleTranslator(source='fr', target='zh-CN').translate(msg)
+    # 机器人逻辑处理（中文）
+    reply_zh = get_bot_reply(msg_zh)
+    # 中文转法语
+    reply_fr = GoogleTranslator(source='zh-CN', target='fr').translate(reply_zh)
+    return jsonify({'reply': reply_fr})
 
-    if not user_message:
-        return jsonify({"reply": "请输入内容"}), 200
-
-    # 调用消息处理函数
-    msg_cn, reply_cn, reply_for_customer = process_customer_message(user_message)
-
-    # 返回给客户的回复（法语或客户原始语言）
-    return jsonify({"reply": reply_for_customer})
+@app.route('/agent', methods=['POST'])
+def agent():
+    data = request.json
+    msg_zh = data.get('message', '')
+    # 中文转法语
+    reply_fr = GoogleTranslator(source='zh-CN', target='fr').translate(msg_zh)
+    return jsonify({'reply': reply_fr})
 
 
 if __name__ == "__main__":

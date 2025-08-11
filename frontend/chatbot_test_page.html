@@ -42,30 +42,31 @@
   const clientInput = document.getElementById('clientInput');
   const agentInput = document.getElementById('agentInput');
 
-  // 客户发消息，调用后端机器人接口
-  async function sendClientMessage() {
-    const msg = clientInput.value.trim();
-    if (!msg) return;
+  // 客服发消息，调用后端翻译接口
+async function sendAgentMessage() {
+  const msg = agentInput.value.trim();
+  if (!msg) return;
 
-    appendMessage(clientMessages, msg, 'client');
-    appendMessage(agentMessages, msg, 'client'); // 同步显示到客服端
+  appendMessage(agentMessages, msg, 'agent');
+  appendMessage(clientMessages, msg, 'agent'); // 同步显示到客户界面
 
-    clientInput.value = '';
+  agentInput.value = '';
 
-    try {
-      const res = await fetch('http://3.71.28.18:5000/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg })
-      });
-      const data = await res.json();
-      appendMessage(clientMessages, data.reply, 'agent');
-      appendMessage(agentMessages, data.reply, 'agent');
-    } catch (e) {
-      appendMessage(clientMessages, '机器人回复失败', 'agent');
-      appendMessage(agentMessages, '机器人回复失败', 'agent');
-    }
+  try {
+    const res = await fetch('http://3.71.28.18:5000/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    // 客户端显示法语
+    appendMessage(clientMessages, data.reply, 'client');
+    appendMessage(agentMessages, data.reply, 'client');
+  } catch (e) {
+    appendMessage(clientMessages, '翻译失败', 'client');
+    appendMessage(agentMessages, '翻译失败', 'client');
   }
+}
 
   // 客服发消息，直接显示（暂时不调用机器人接口）
   function sendAgentMessage() {
