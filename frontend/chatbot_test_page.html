@@ -42,13 +42,13 @@
   const clientInput = document.getElementById('clientInput');
   const agentInput = document.getElementById('agentInput');
 
-  // 客户发消息，调用后端翻译接口
+  // 客户发消息，调用后端 /chat
   async function sendClientMessage() {
     const msg = clientInput.value.trim();
     if (!msg) return;
 
-    appendMessage(clientMessages, msg, 'client');
-    appendMessage(agentMessages, msg, 'client'); // 同步显示到客服界面
+    appendMessage(clientMessages, msg, 'client'); // 客户界面显示原始法语
+    appendMessage(agentMessages, msg, 'client');  // 客服界面显示原始法语
 
     clientInput.value = '';
 
@@ -59,40 +59,42 @@
         body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
-      // 客服端显示中文
-      appendMessage(agentMessages, data.reply, 'agent');
-      appendMessage(clientMessages, data.reply, 'agent');
+      // 客户端显示法语回复
+      appendMessage(clientMessages, data.reply_fr, 'agent');
+      // 客服端显示中文回复
+      appendMessage(agentMessages, data.reply_zh, 'agent');
     } catch (e) {
       appendMessage(agentMessages, '翻译失败', 'agent');
       appendMessage(clientMessages, '翻译失败', 'agent');
     }
   }
 
-  // 客服发消息，调用后端翻译接口
-  async function sendClientMessage() {
-  const msg = clientInput.value.trim();
-  if (!msg) return;
+  // 客服发消息，调用后端 /agent
+  async function sendAgentMessage() {
+    const msg = agentInput.value.trim();
+    if (!msg) return;
 
-  appendMessage(clientMessages, msg, 'client');
-  appendMessage(agentMessages, msg, 'client'); // 客服界面显示原始法语
+    appendMessage(agentMessages, msg, 'agent'); // 客服界面显示原始中文
+    appendMessage(clientMessages, msg, 'agent'); // 客户界面显示原始中文（可选）
 
-  clientInput.value = '';
+    agentInput.value = '';
 
-  try {
-    const res = await fetch('http://3.71.28.18:5000/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg })
-    });
-      // 客户端显示法语回复
-    const data = await res.json();
-    appendMessage(clientMessages, data.reply_fr, 'agent'); // 客户端显示法语
-    appendMessage(agentMessages, data.reply_zh, 'agent'); // 客服端显示中文
-  } catch (e) {
-    appendMessage(agentMessages, '翻译失败', 'agent');
-    appendMessage(clientMessages, '翻译失败', 'agent');
+    try {
+      const res = await fetch('http://3.71.28.18:5000/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      // 客户端显示法语翻译
+      appendMessage(clientMessages, data.reply, 'client');
+      // 客服界面也显示法语翻译（可选）
+      appendMessage(agentMessages, data.reply, 'client');
+    } catch (e) {
+      appendMessage(clientMessages, '翻译失败', 'client');
+      appendMessage(agentMessages, '翻译失败', 'client');
+    }
   }
-}
 
   // 显示消息
   function appendMessage(container, msg, sender) {
