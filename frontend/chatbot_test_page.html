@@ -47,9 +47,8 @@
     const msg = clientInput.value.trim();
     if (!msg) return;
 
-    appendMessage(clientMessages, msg, 'client'); // 客户界面显示原始法语
-    appendMessage(agentMessages, msg, 'client');  // 客服界面显示原始法语
-
+    // 客户界面显示原始法语
+    appendMessage(clientMessages, msg, 'client');
     clientInput.value = '';
 
     try {
@@ -59,12 +58,12 @@
         body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
-      // 客户端显示法语回复
+      // 客服界面显示翻译后的中文
+      appendMessage(agentMessages, data.reply_zh, 'client');
+      // 客户界面显示法语回复（机器人回复）
       appendMessage(clientMessages, data.reply_fr, 'agent');
-      // 客服端显示中文回复
-      appendMessage(agentMessages, data.reply_zh, 'agent');
     } catch (e) {
-      appendMessage(agentMessages, '翻译失败', 'agent');
+      appendMessage(agentMessages, '翻译失败', 'client');
       appendMessage(clientMessages, '翻译失败', 'agent');
     }
   }
@@ -74,9 +73,8 @@
     const msg = agentInput.value.trim();
     if (!msg) return;
 
-    appendMessage(agentMessages, msg, 'agent'); // 客服界面显示原始中文
-    appendMessage(clientMessages, msg, 'agent'); // 客户界面显示原始中文（可选）
-
+    // 客服界面显示原始中文
+    appendMessage(agentMessages, msg, 'agent');
     agentInput.value = '';
 
     try {
@@ -86,13 +84,10 @@
         body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
-      // 客户端显示法语翻译
+      // 客户界面显示法语翻译
       appendMessage(clientMessages, data.reply, 'client');
-      // 客服界面也显示法语翻译（可选）
-      appendMessage(agentMessages, data.reply, 'client');
     } catch (e) {
       appendMessage(clientMessages, '翻译失败', 'client');
-      appendMessage(agentMessages, '翻译失败', 'client');
     }
   }
 
