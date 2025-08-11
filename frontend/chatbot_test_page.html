@@ -1,86 +1,92 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>客服机器人测试页</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background-color: #f7f7f7;
-      margin: 0;
-      padding: 0;
-    }
-    h2 {
-      text-align: center;
-      padding: 20px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>客户-客服聊天模拟测试</title>
+<style>
+  body { font-family: Arial, sans-serif; display: flex; height: 100vh; margin: 0; }
+  .chat-panel { flex: 1; border: 1px solid #ccc; display: flex; flex-direction: column; margin: 10px; }
+  .header { background: #007bff; color: white; padding: 10px; }
+  .messages { flex: 1; padding: 10px; overflow-y: auto; background: #f9f9f9; }
+  .input-area { display: flex; padding: 10px; background: #eee; }
+  input[type="text"] { flex: 1; padding: 8px; font-size: 14px; }
+  button { margin-left: 10px; padding: 8px 16px; font-size: 14px; }
+  .msg { margin-bottom: 10px; }
+  .msg.client { color: #007bff; }
+  .msg.agent { color: #28a745; }
+</style>
 </head>
 <body>
 
-  <h2>🧪 客服机器人测试页面</h2>
-  <p style="text-align:center;">点击右下角图标打开聊天窗口开始测试。</p>
-
-  <!-- 客服图标 -->
-  <div id="chat-icon" style="position:fixed;bottom:20px;right:20px;z-index:1000;cursor:pointer;">
-    <img src="https://cdn-icons-png.flaticon.com/512/2950/2950661.png" width="60" height="60" />
+<div class="chat-panel" id="clientPanel">
+  <div class="header">客户界面</div>
+  <div class="messages" id="clientMessages"></div>
+  <div class="input-area">
+    <input type="text" id="clientInput" placeholder="客户输入消息..." />
+    <button onclick="sendClientMessage()">发送</button>
   </div>
+</div>
 
-  <!-- 聊天窗口 -->
-  <div id="chat-widget" style="display:none;position:fixed;bottom:90px;right:20px;width:300px;height:400px;background:#fff;border:1px solid #000000;z-index:1001;box-shadow:0 4px 12px rgba(0,0,0,0.2);border-radius:10px;overflow:hidden;font-family:sans-serif;">
-    <div style="background:#000000;color:#fff;padding:10px;font-weight:bold;">Assistante service client</div>
-    <div id="chat-messages" style="padding:10px;height:300px;overflow-y:auto;font-size:14px;"></div>
-    <div style="display:flex;border-top:1px solid #eee;">
-      <input id="chat-input" type="text" placeholder="Veuillez entrer..." style="flex:1;border:none;padding:10px;" />
-      <button id="send-btn" style="background:#000000;color:#fff;border:none;padding:10px 15px;cursor:pointer;">Envoyer</button>
-    </div>
+<div class="chat-panel" id="agentPanel">
+  <div class="header">客服界面</div>
+  <div class="messages" id="agentMessages"></div>
+  <div class="input-area">
+    <input type="text" id="agentInput" placeholder="客服输入消息..." />
+    <button onclick="sendAgentMessage()">发送</button>
   </div>
+</div>
 
-  <script>
-    const chatIcon = document.getElementById('chat-icon');
-    const chatWidget = document.getElementById('chat-widget');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('send-btn');
+<script>
+  const clientMessages = document.getElementById('clientMessages');
+  const agentMessages = document.getElementById('agentMessages');
+  const clientInput = document.getElementById('clientInput');
+  const agentInput = document.getElementById('agentInput');
 
-    chatIcon.addEventListener('click', () => {
-      chatWidget.style.display = chatWidget.style.display === 'none' ? 'block' : 'none';
-    });
+  // 客户发消息，调用后端机器人接口
+  async function sendClientMessage() {
+    const msg = clientInput.value.trim();
+    if (!msg) return;
 
-    function appendMessage(sender, text) {
-      const div = document.createElement('div');
-      div.style.margin = '5px 0';
-      div.innerHTML = `<strong>${sender}:</strong> ${text}`;
-      chatMessages.appendChild(div);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+    appendMessage(clientMessages, msg, 'client');
+    appendMessage(agentMessages, msg, 'client'); // 同步显示到客服端
 
-    sendBtn.addEventListener('click', () => {
-      const message = chatInput.value.trim();
-      if (!message) return;
+    clientInput.value = '';
 
-      appendMessage('je', message);
-      chatInput.value = '';
-
-      fetch('http://3.71.28.18:5000/chat', {
+    try {
+      const res = await fetch('http://3.71.28.18:5000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
-      })
-      .then(res => res.json())
-      .then(data => {
-        appendMessage('GameSawa', data.reply || '（pas de réponse）');
-      })
-      .catch(err => {
-        console.error('demande:', err);
-        appendMessage('GameSawa', 'Erreur système, veuillez réessayer plus tard.');
+        body: JSON.stringify({ message: msg })
       });
-    });
+      const data = await res.json();
+      appendMessage(clientMessages, data.reply, 'agent');
+      appendMessage(agentMessages, data.reply, 'agent');
+    } catch (e) {
+      appendMessage(clientMessages, '机器人回复失败', 'agent');
+      appendMessage(agentMessages, '机器人回复失败', 'agent');
+    }
+  }
 
-    chatInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') sendBtn.click();
-    });
-  </script>
+  // 客服发消息，直接显示（暂时不调用机器人接口）
+  function sendAgentMessage() {
+    const msg = agentInput.value.trim();
+    if (!msg) return;
+
+    appendMessage(agentMessages, msg, 'agent');
+    appendMessage(clientMessages, msg, 'agent'); // 同步显示到客户界面
+
+    agentInput.value = '';
+  }
+
+  // 显示消息
+  function appendMessage(container, msg, sender) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + sender;
+    div.textContent = msg;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+</script>
 
 </body>
 </html>
