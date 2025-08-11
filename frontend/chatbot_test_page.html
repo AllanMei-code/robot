@@ -49,7 +49,6 @@
 
     // 客户界面显示原始法语
     appendMessage(clientMessages, msg, 'client');
-    // 客服界面显示翻译后的中文
     clientInput.value = '';
 
     try {
@@ -59,9 +58,9 @@
         body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
-      // 客服界面显示中文回复
+      // 客服界面显示翻译后的中文
       appendMessage(agentMessages, data.reply_zh, 'client');
-      // 客户界面显示法语回复（如果有机器人回复，可以显示）
+      // 客户界面显示法语回复（机器人回复）
       appendMessage(clientMessages, data.reply_fr, 'agent');
     } catch (e) {
       appendMessage(agentMessages, '翻译失败', 'client');
