@@ -10,5 +10,5 @@ def get_bot_reply(message: str) -> str:
     elif "J'ai effectué un retrait que je n'ai pas encore reçu" in message :
         return "En raison de l'instabilité des canaux de paiement, veuillez patienter" 
     else:
-        return "抱歉，我暂时无法回答此问题，我们的人工客服会尽快联系您。"
+        return "Désolé, je ne peux pas répondre à cette question pour le moment. Notre service client vous contactera dès que possible."
      
