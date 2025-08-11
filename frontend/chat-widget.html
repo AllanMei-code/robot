@@ -4,11 +4,11 @@
 </div>
 
 <div id="chat-widget" style="display:none;position:fixed;bottom:90px;right:20px;width:300px;height:400px;background:#fff;border:1px solid #ccc;z-index:1001;box-shadow:0 4px 12px rgba(0,0,0,0.2);border-radius:10px;overflow:hidden;font-family:sans-serif;">
-  <div style="background:#0a7cff;color:#fff;padding:10px;font-weight:bold;">客服小助手</div>
+  <div style="background:#0a7cff;color:#fff;padding:10px;font-weight:bold;">Assistante service client</div>
   <div id="chat-messages" style="padding:10px;height:300px;overflow-y:auto;font-size:14px;"></div>
   <div style="display:flex;border-top:1px solid #eee;">
-    <input id="chat-input" type="text" placeholder="请输入..." style="flex:1;border:none;padding:10px;" />
-    <button id="send-btn" style="background:#0a7cff;color:#fff;border:none;padding:10px 15px;cursor:pointer;">发送</button>
+    <input id="chat-input" type="text" placeholder="Veuillez entrer..." style="flex:1;border:none;padding:10px;" />
+    <button id="send-btn" style="background:#0a7cff;color:#fff;border:none;padding:10px 15px;cursor:pointer;">envoyer</button>
   </div>
 </div>
 
@@ -35,7 +35,7 @@
     const message = chatInput.value.trim();
     if (!message) return;
 
-    appendMessage('我', message);
+    appendMessage('je', message); //我
     chatInput.value = '';
 
     fetch('http://3.71.28.18:5000/chat', {
@@ -45,11 +45,11 @@
     })
     .then(res => res.json())
     .then(data => {
-      appendMessage('客服', data.reply || '（无回复）');
+      appendMessage('GameSawa', data.reply || '(pas de réponse)'); //客服标头（无回复）
     })
     .catch(err => {
-      console.error('请求失败:', err);
-      appendMessage('客服', '系统异常，请稍后再试。');
+      console.error('La demande a échoué:', err); //请求失败
+      appendMessage('GameSawa', 'Erreur système, veuillez réessayer plus tard.'); //客服标头
     });
   });
 
