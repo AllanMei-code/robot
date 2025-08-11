@@ -1,30 +1,26 @@
 # logic.py —— 简单规则匹配机器人，可后期扩展为 AI 或数据库等逻辑
 
 def get_bot_reply(message: str) -> str:
-    message = message.lower()
-    # 法语关键词举例
+    msg_lower = message.lower()
     withdraw_keywords = [
-        "retrait",       # 提现
-        "retraits",      # 提现复数
-        "retirer",       # 提款动词
-        "paiement",      # 支付
-        "argent",        # 钱
-        "compte",        # 账户
-        "transfert"      # 转账
+        "retrait",
+        "retraits",
+        "retirer",
+        "paiement",
+        "argent",
+        "compte",
+        "transfert"
     ]
 
-    # 关键词匹配
     for keyword in withdraw_keywords:
-        if keyword in message:
-            return "En raison de l'instabilité des canaux de paiement, veuillez patienter"  # 支付渠道不稳定，请耐心等待
+        if keyword in msg_lower:
+            return "En raison de l'instabilité des canaux de paiement, veuillez patienter"
 
-    # 其它规则匹配（循环外)
-    if "bonjour" in message:
-        return "Bonjour, bienvenue chez gamesawa，Comment puis-je vous aider ?"      # 你好 - 欢迎语
-    if "*" in message:
-        return "Veuillez décrire en détail le problème que vous avez rencontré"       # 请详细描述问题
-    if "j'ai effectué un retrait que je n'ai pas encore reçu" in message:
-        return "En raison de l'instabilité des canaux de paiement, veuillez patienter"  # 支付渠道不稳定，请耐心等待
+    if "bonjour" in msg_lower:
+        return "Bonjour, bienvenue chez gamesawa，Comment puis-je vous aider ?"
+    if "*" in msg_lower:
+        return "Veuillez décrire en détail le problème que vous avez rencontré"
+    if "j'ai effectué un retrait que je n'ai pas encore reçu" in msg_lower:
+        return "En raison de l'instabilité des canaux de paiement, veuillez patienter"
 
-    # 默认答复
     return "Désolé, je ne peux pas répondre à cette question pour le moment. Notre service client vous contactera dès que possible."
