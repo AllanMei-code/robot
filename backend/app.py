@@ -31,13 +31,10 @@ def process_customer_message(raw_msg):
 def chat():
     data = request.json
     msg = data.get('message', '')
-    # 法语转中文
     msg_zh = GoogleTranslator(source='fr', target='zh-CN').translate(msg)
-    # 机器人逻辑处理（中文）
     reply_zh = get_bot_reply(msg_zh)
-    # 中文转法语
     reply_fr = GoogleTranslator(source='zh-CN', target='fr').translate(reply_zh)
-    return jsonify({'reply': reply_fr})
+    return jsonify({'reply_fr': reply_fr, 'reply_zh': reply_zh})
 
 @app.route('/agent', methods=['POST'])
 def agent():
