@@ -42,12 +42,12 @@
   const clientInput = document.getElementById('clientInput');
   const agentInput = document.getElementById('agentInput');
 
-  // 客户发消息，调用后端 /chat
+  // 客户发消息
   async function sendClientMessage() {
     const msg = clientInput.value.trim();
     if (!msg) return;
 
-    // 客户界面显示原始法语
+    // 客户界面显示原文
     appendMessage(clientMessages, msg, 'client');
     clientInput.value = '';
 
@@ -58,22 +58,28 @@
         body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
+
       // 客服界面显示翻译后的中文
-      appendMessage(agentMessages, data.reply_zh, 'client');
-      // 客户界面显示法语回复（机器人回复）
-      appendMessage(clientMessages, data.reply_fr, 'agent');
+      appendMessage(agentMessages, data.agent_view, 'client');
+
+      // 客户界面显示机器人法语回复
+      appendMessage(clientMessages, data.customer_view, 'agent');
+
+      // 客服界面显示机器人中文回复
+      appendMessage(agentMessages, data.agent_reply_view, 'agent');
+
     } catch (e) {
       appendMessage(agentMessages, '翻译失败', 'client');
       appendMessage(clientMessages, '翻译失败', 'agent');
     }
   }
 
-  // 客服发消息，调用后端 /agent
+  // 客服发消息
   async function sendAgentMessage() {
     const msg = agentInput.value.trim();
     if (!msg) return;
 
-    // 客服界面显示原始中文
+    // 客服界面显示原文
     appendMessage(agentMessages, msg, 'agent');
     agentInput.value = '';
 
@@ -84,8 +90,10 @@
         body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
-      // 客户界面显示法语翻译
-      appendMessage(clientMessages, data.reply, 'client');
+
+      // 客户界面显示翻译后的法语
+      appendMessage(clientMessages, data.customer_view, 'client');
+
     } catch (e) {
       appendMessage(clientMessages, '翻译失败', 'client');
     }
