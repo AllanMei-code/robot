@@ -194,6 +194,14 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Cache-Control')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     return response
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({
+        "status": "error",
+        "message": "Method not allowed",
+        "allowed_methods": list(e.valid_methods)
+    }), 405
 # ==================== 启动应用 ====================
 
 if __name__ == '__main__':

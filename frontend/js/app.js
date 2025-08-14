@@ -28,44 +28,30 @@ function initApp() {
   agentInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendAgentMessage());
 
   async function sendClientMessage() {
-    const msg = clientInput.value.trim();
-    if (!msg) return;
-    
-    addMessage(clientMessages, msg, 'client');
-    clientInput.value = '';
-    
-    try {
-      // 显示加载状态
-      const loadingId = showLoading(clientMessages);
-      
-      const response = await fetch(API_CHAT_URL, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ message: msg })
-      });
-      
-      removeLoading(loadingId);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP错误! 状态码: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      if (data.status !== 'success') {
-        throw new Error(data.message || '服务器返回未知错误');
-      }
-      
-      addMessage(agentMessages, data.data.translated, 'agent');
-      
-    } catch (error) {
-      console.error('请求失败:', error);
-      addMessage(agentMessages, `错误: ${error.message}`, 'error');
+  try {
+    const response = await fetch(API_CHAT_URL, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ message: msg })
+    });
+
+    // 检查内容类型
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      throw new Error(`Expected JSON but got: ${text.slice(0, 100)}...`);
     }
+
+    const data = await response.json();
+    // ...其余处理逻辑
+  } catch (error) {
+    console.error('请求失败:', error);
+    addMessage(agentMessages, `错误: ${error.message}`, 'error');
   }
+}
 
   async function sendAgentMessage() {
     const msg = agentInput.value.trim();
