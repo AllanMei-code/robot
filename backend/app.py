@@ -14,11 +14,9 @@ app = Flask(__name__, static_folder='../frontend')
 
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://3.71.28.18:3000", "http://localhost:3000"],
+        "origins": "*",
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Cache-Control"],
-        "supports_credentials": True,
-        "expose_headers": ["Content-Disposition"]  # 如果需要下载文件
+        "allow_headers": ["Content-Type"]
     }
 })
 
@@ -60,7 +58,7 @@ def get_config():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route('/api/v1/chat', methods=['POST'])
+@app.route('/api/v1/chat', methods=['POST','OPTIONS'])
 def handle_chat():
     """处理客户消息（自动检测语言并翻译）"""
     try:
