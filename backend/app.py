@@ -6,6 +6,7 @@ import threading
 import logging
 from datetime import datetime
 
+
 base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")  # 第二个参数是默认值
 
 # 初始化Flask应用
@@ -49,7 +50,7 @@ config_store = ConfigStore()
 
 # ==================== API端点 ====================
 
-@app.route('/api/config', methods=['GET'])
+@app.route('/api/v1/api/config', methods=['GET'])
 def get_config():
     """动态获取前端配置"""
     return jsonify({
@@ -58,7 +59,7 @@ def get_config():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route('/api/chat', methods=['POST'])
+@app.route('/api/v1/api/chat', methods=['POST'])
 def handle_chat():
     """处理客户消息（自动检测语言并翻译）"""
     try:
@@ -105,7 +106,7 @@ def handle_chat():
             "message": "Internal server error"
         }), 500
 
-@app.route('/api/agent/reply', methods=['POST'])
+@app.route('/api/v1/api/agent/reply', methods=['POST'])
 def handle_agent_reply():
     """处理客服回复（翻译为目标语言）"""
     try:
@@ -147,14 +148,16 @@ def handle_agent_reply():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    """服务前端静态文件"""
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
+    if path.startswith('api/'):
+        return jsonify({"error": "Not Found"}), 404
+    file_path = os.path.join(app.static_folder, path)
+    if path and os.path.exists(file_path) and not os.path.isdir(file_path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
 # ==================== 管理接口 ====================
 
-@app.route('/admin/config/update', methods=['POST'])
+@app.route('/api/v1/admin/config/update', methods=['POST'])
 def update_config():
     """动态更新配置（密码保护示例）"""
     if request.headers.get('X-Admin-Secret') != 'your-secret-key':
@@ -174,7 +177,7 @@ def update_config():
 
 # ==================== 健康检查 ====================
 
-@app.route('/health')
+@app.route('/api/v1/health')
 def health_check():
     return jsonify({
         "status": "healthy",

@@ -8,7 +8,7 @@ window.AppConfig = {
 // 动态加载配置
 (async function loadConfig() {
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch('/api/v1/config');
     const remoteConfig = await response.json();
     
     // 合并配置
