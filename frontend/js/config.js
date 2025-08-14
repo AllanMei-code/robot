@@ -1,7 +1,7 @@
 // 全局配置对象
 window.AppConfig = {
   loading: true,
-  API_BASE_URL: '',
+  API_BASE_URL: 'http://3.71.28.18:5000',
   DEFAULT_LANGUAGE: 'fr'
 };
 

@@ -6,6 +6,8 @@ import threading
 import logging
 from datetime import datetime
 
+base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")  # 第二个参数是默认值
+
 # 初始化Flask应用
 app = Flask(__name__, static_folder='../frontend')
 
@@ -36,7 +38,7 @@ logging.basicConfig(
 class ConfigStore:
     def __init__(self):
         self.config = {
-            "API_BASE_URL": os.getenv("API_BASE_URL", "http://localhost:5000"),
+            "API_BASE_URL": os.getenv("API_BASE_URL", "http://3.71.28.18:5000"),
             "DEFAULT_CLIENT_LANG": "fr",
             "TRANSLATION_ENABLED": True,
             "MAX_MESSAGE_LENGTH": 500,
@@ -188,7 +190,7 @@ def health_check():
 if __name__ == '__main__':
     # 生产环境应使用Gunicorn
     app.run(
-        host='0.0.0.0',
+        host='3.71.28.18',
         port=5000,
         threaded=True,
         debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
