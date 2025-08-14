@@ -1,9 +1,8 @@
 // 全局配置对象（带默认值）
 window.AppConfig = {
-  loading: true,
+  loading: false, // 配置加载状态
   API_BASE_URL: 'http://3.71.28.18:5000', // 生产环境默认值
   DEFAULT_LANGUAGE: 'fr',
-  FALLBACK: false // 标记是否使用了备用配置
 };
 
 // 动态加载配置

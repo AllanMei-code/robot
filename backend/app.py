@@ -12,12 +12,13 @@ base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")  # 第二个参�
 # 初始化Flask应用
 app = Flask(__name__, static_folder='../frontend')
 
-# 高级CORS配置（生产环境应限制域名）
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["*"],  # 测试允许所有来源
+        "origins": ["http://3.71.28.18:3000", "http://localhost:3000"],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
+        "allow_headers": ["Content-Type", "Cache-Control"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Disposition"]  # 如果需要下载文件
     }
 })
 
@@ -188,6 +189,11 @@ def health_check():
         }
     })
 
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Cache-Control')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    return response
 # ==================== 启动应用 ====================
 
 if __name__ == '__main__':
