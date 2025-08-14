@@ -193,7 +193,7 @@ def health_check():
 if __name__ == '__main__':
     # 生产环境应使用Gunicorn
     app.run(
-        host='3.71.28.18',
+        host='0.0.0.0',
         port=5000,
         threaded=True,
         debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
