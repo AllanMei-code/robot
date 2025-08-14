@@ -51,7 +51,7 @@ config_store = ConfigStore()
 
 # ==================== API端点 ====================
 
-@app.route('/api/v1/api/config', methods=['GET'])
+@app.route('/api/v1/app/config', methods=['GET'])
 def get_config():
     """动态获取前端配置"""
     return jsonify({
@@ -107,7 +107,7 @@ def handle_chat():
             "message": "Internal server error"
         }), 500
 
-@app.route('/api/v1/api/agent/reply', methods=['POST'])
+@app.route('/api/v1/agent/reply', methods=['POST'])
 def handle_agent_reply():
     """处理客服回复（翻译为目标语言）"""
     try:
