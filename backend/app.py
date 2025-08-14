@@ -51,7 +51,7 @@ config_store = ConfigStore()
 
 # ==================== API端点 ====================
 
-@app.route('/api/v1/app/config', methods=['GET'])
+@app.route('/api/v1/config', methods=['GET'])
 def get_config():
     """动态获取前端配置"""
     return jsonify({
@@ -60,7 +60,7 @@ def get_config():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route('/api/v1/api/chat', methods=['POST'])
+@app.route('/api/v1/chat', methods=['POST'])
 def handle_chat():
     """处理客户消息（自动检测语言并翻译）"""
     try:
