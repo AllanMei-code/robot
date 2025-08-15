@@ -20,6 +20,14 @@ CORS(app, resources={
         "supports_credentials": True
     }
 })
+#添加路由方法验证
+@app.before_request
+def check_method():
+    if request.method not in ['POST', 'OPTIONS']:
+        return jsonify({
+            "error": "Method not allowed",
+            "allowed_methods": ["POST"]
+        }), 405
 
 # 线程安全的翻译器
 translator_lock = threading.Lock()
@@ -142,6 +150,17 @@ def handle_agent_reply():
             "status": "error",
             "message": "Translation service unavailable"
         }), 503
+
+#添加调试端点检查已注册路由
+@app.route('/debug/routes')
+def debug_routes():
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            "path": str(rule),
+            "methods": sorted(rule.methods)
+        })
+    return jsonify(sorted(routes, key=lambda x: x['path']))
 
 # ==================== 静态文件服务 ====================
 
