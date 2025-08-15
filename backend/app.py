@@ -113,10 +113,19 @@ def handle_agent_reply():
 
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
+    origin = request.headers.get('Origin')
+    allowed_origins = ["http://3.71.28.18:3000", "http://localhost:3000"]
+
+    if origin in allowed_origins:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')  # 关键：支持携带 cookie
+    else:
+        response.headers.add('Access-Control-Allow-Origin', '*')
+
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Cache-Control')
     return response
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, threaded=True, debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true')
