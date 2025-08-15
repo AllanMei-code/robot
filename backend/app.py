@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from deep_translator import GoogleTranslator
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 # 允许跨域
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
