@@ -153,14 +153,16 @@ def handle_agent_reply():
 
 #添加调试端点检查已注册路由
 @app.route('/debug/routes')
-def debug_routes():
+def list_routes():
     routes = []
     for rule in app.url_map.iter_rules():
-        routes.append({
-            "path": str(rule),
-            "methods": sorted(rule.methods)
-        })
-    return jsonify(sorted(routes, key=lambda x: x['path']))
+        if "static" not in rule.endpoint:  # 忽略静态文件路由
+            routes.append({
+                "endpoint": rule.endpoint,
+                "methods": sorted(rule.methods),
+                "path": str(rule)
+            })
+    return jsonify(routes)
 
 # ==================== 静态文件服务 ====================
 
