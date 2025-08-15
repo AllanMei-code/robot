@@ -13,9 +13,9 @@ base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")  # 第二个参�
 app = Flask(__name__, static_folder='../frontend')
 
 CORS(app, resources={
-    r"/api/*": {
+    r"/api/v1/*": {  # 更精确的路径匹配
         "origins": "*",
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True
     }
@@ -23,6 +23,10 @@ CORS(app, resources={
 #添加路由方法验证
 @app.before_request
 def check_method():
+    # 排除不需要验证的路由
+    if request.path.startswith('/api/v1/config'):
+        return
+    
     if request.method not in ['POST', 'OPTIONS']:
         return jsonify({
             "error": "Method not allowed",
