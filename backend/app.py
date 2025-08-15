@@ -13,26 +13,28 @@ base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")  # 第二个参�
 app = Flask(__name__, static_folder='../frontend')
 
 CORS(app, resources={
-    r"/api/v1/*": {  # 更精确的路径匹配
+    r"/api/v1/*": {
         "origins": "*",
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
+        "supports_credentials": True,
+        "expose_headers": ["Content-Disposition"]
     }
 })
 #添加路由方法验证
 @app.before_request
 def check_method():
-    # 排除不需要验证的路由
-    if request.path.startswith('/api/v1/config'):
+    # 排除调试路由和OPTIONS方法
+    if request.path == '/debug/routes' or request.method == 'OPTIONS':
         return
     
-    if request.method not in ['POST', 'OPTIONS']:
+    # 只对特定路由进行方法检查
+    if request.path.startswith('/api/v1/chat') and request.method not in ['POST']:
         return jsonify({
             "error": "Method not allowed",
             "allowed_methods": ["POST"]
         }), 405
-
+    
 # 线程安全的翻译器
 translator_lock = threading.Lock()
 translator = Translator(service_urls=['translate.google.com'])
@@ -51,7 +53,7 @@ logging.basicConfig(
 class ConfigStore:
     def __init__(self):
         self.config = {
-            "API_BASE_URL": os.getenv("API_BASE_URL", "http://3.71.28.18:5000"),
+            "API_BASE_URL": os.getenv("API_BASE_URL", "http://3.71.28.18:5000"),  # 修正默认端口
             "DEFAULT_CLIENT_LANG": "fr",
             "TRANSLATION_ENABLED": True,
             "MAX_MESSAGE_LENGTH": 500,
@@ -73,13 +75,15 @@ def get_config():
 
 @app.route('/api/v1/chat', methods=['POST','OPTIONS'])
 def handle_chat():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "success"}), 200
     """处理客户消息（自动检测语言并翻译）"""
     try:
         # 验证输入
         data = request.get_json()
         if not data or 'message' not in data:
             return jsonify({"error": "Invalid request format"}), 400
-            
+
         message = data['message'].strip()
         if not message:
             return jsonify({"error": "Message cannot be empty"}), 400
