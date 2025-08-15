@@ -5,10 +5,18 @@ from deep_translator import GoogleTranslator
 
 app = Flask(__name__)
 # 允许跨域
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # 初始化 SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# app.py 里加一个配置接口
+@app.route("/api/v1/config", methods=["GET"])
+def get_config():
+    return jsonify({
+        "API_BASE_URL": "http://3.71.28.18:5000",
+        "DEFAULT_CLIENT_LANG": "fr"
+    })
 
 # 客户端发消息
 @socketio.on("client_message")
@@ -46,4 +54,4 @@ def handle_agent_message(data):
     }, broadcast=True)
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)

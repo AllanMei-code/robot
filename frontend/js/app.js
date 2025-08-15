@@ -1,7 +1,9 @@
 document.addEventListener('configReady', initApp);
 
 function initApp() {
-  const socket = io(window.AppConfig.API_BASE_URL);
+  const socket = io(window.AppConfig.API_BASE_URL, {
+    transports: ['websocket']
+  });
 
   const clientInput = document.getElementById('client-input');
   const agentInput = document.getElementById('agent-input');
