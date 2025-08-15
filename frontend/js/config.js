@@ -44,12 +44,10 @@
       }
 
       // 深度合并配置（保留您原有的合并逻辑）
-      window.AppConfig = { 
-        ...defaults,
-        ...remoteConfig,
-        loading: false,
-        FALLBACK: false
-      };
+    window.AppConfig = {
+      API_BASE_URL: "http://3.71.28.18:5000", // 和 Flask-SocketIO 一致
+      DEFAULT_CLIENT_LANG: "fr"
+    };
       
     } catch (error) {
       console.error('[Config] 加载失败:', error);
