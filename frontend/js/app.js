@@ -9,7 +9,8 @@ function initApp() {
   const agentInput = document.getElementById('agent-input');
   const clientMessages = document.getElementById('client-messages');
   const agentMessages = document.getElementById('agent-messages');
-
+  const API_CHAT_URL = `${window.AppConfig.API_BASE_URL}/api/v1/chat`;
+  const API_AGENT_URL = `${window.AppConfig.API_BASE_URL}/api/v1/agent/reply`;
   // 监听服务器推送的新消息
   socket.on('new_message', (data) => {
     if (data.from === 'client') {
