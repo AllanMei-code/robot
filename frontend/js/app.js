@@ -93,7 +93,7 @@ function initApp() {
         throw new Error(data.message || '服务器返回未知错误');
       }
       
-      addMessage(clientMessages, data.data.translated, 'client');
+      addMessage(clientMessages, data.translated, 'client');
       
     } catch (error) {
       console.error('请求失败:', error);

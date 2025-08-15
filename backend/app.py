@@ -89,10 +89,9 @@ def handle_chat():
     try:
         # 验证输入
         data = request.get_json()
+        message = data['message'].strip()
         if not data or 'message' not in data:
             return jsonify({"error": "Invalid request format"}), 400
-
-        message = data['message'].strip()
         if not message:
             return jsonify({"error": "Message cannot be empty"}), 400
         if len(message) > config_store.config["MAX_MESSAGE_LENGTH"]:
@@ -102,6 +101,10 @@ def handle_chat():
         with translator_lock:
             detected = translator.detect(message[:100])  # 检测前100字符提高性能
             lang = detected.lang
+            confidence = detected.confidence
+
+            # 调试日志
+            app.logger.info(f"检测到语言: {lang} (置信度: {confidence})")
 
             # 如果不是中文则翻译
             if lang != 'zh-cn' and config_store.config["TRANSLATION_ENABLED"]:
@@ -112,6 +115,7 @@ def handle_chat():
                 ).text
             else:
                 translated = message
+
 
         logging.info(f"Translation: {lang} -> zh-cn | {message[:20]}... -> {translated[:20]}...")
 
