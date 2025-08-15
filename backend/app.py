@@ -52,8 +52,16 @@ logging.basicConfig(
 # 动态配置存储
 class ConfigStore:
     def __init__(self):
+        base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")
+        
+        # 自动修正URL格式
+        if ':22' in base_url:
+            base_url = base_url.replace(':22', ':5000')
+        if not base_url.startswith(('http://', 'https://')):
+            base_url = f'http://{base_url}'
+        
         self.config = {
-            "API_BASE_URL": os.getenv("API_BASE_URL", "http://3.71.28.18:5000"),  # 修正默认端口
+            "API_BASE_URL": base_url,
             "DEFAULT_CLIENT_LANG": "fr",
             "TRANSLATION_ENABLED": True,
             "MAX_MESSAGE_LENGTH": 500,
