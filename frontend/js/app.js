@@ -1,7 +1,7 @@
 document.addEventListener('configReady', initApp);
 
 function initApp() {
-  const socket = io(window.AppConfig.API_BASE_URL, {
+  const socket = io("http://3.71.28.18:5000", {
     transports: ['websocket']
   });
 
