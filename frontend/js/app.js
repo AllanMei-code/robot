@@ -28,12 +28,18 @@ function initApp() {
   agentInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendAgentMessage());
 
   async function sendClientMessage() {
+        const msg = document.getElementById('client-input').value.trim(); // 确保获取输入值
+    if (!msg) return;
   try {
     const response = await fetch(API_CHAT_URL, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'Accept': 'application/json'
+      } ,
+      catch (error) {
+        console.error('请求失败:', error);
+        addMessage(agentMessages, `错误: ${error.message}`, 'error');
       },
       body: JSON.stringify({ message: msg })
     });

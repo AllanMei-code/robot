@@ -1,68 +1,83 @@
-// 全局配置对象（带默认值）
-window.AppConfig = {
-  loading: false, // 配置加载状态
-  API_BASE_URL: 'http://3.71.28.18:5000', // 生产环境默认值
-  DEFAULT_LANGUAGE: 'fr',
-};
+// ==================== 新版config.js ====================
+// 立即执行的配置加载函数（替换原有全部代码）
+(function initConfig() {
+  // 默认配置（兼容您原有的默认值）
+  const defaults = {
+    loading: true,
+    API_BASE_URL: window.location.hostname.includes('localhost') 
+      ? window.location.origin 
+      : 'http://3.71.28.18:5000', // 保持您原有的生产环境地址
+    DEFAULT_LANGUAGE: 'fr', // 保持与原属性名一致
+    FALLBACK: false,
+    // 保留您可能在其他地方使用的扩展属性
+    TRANSLATION_ENABLED: true,
+    MAX_MESSAGE_LENGTH: 500
+  };
 
-// 动态加载配置
-(async function loadConfig() {
-  try {
-    console.log('[Config] 开始加载远程配置...');
-    
-    const apiUrl = `${window.AppConfig.API_BASE_URL}/api/v1/config`;
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache'
+  // 初始化全局配置（保持window.AppConfig接口不变）
+  window.AppConfig = { ...defaults };
+
+  // 配置加载函数（增强版）
+  const loadConfig = async () => {
+    try {
+      const apiUrl = `${window.AppConfig.API_BASE_URL}/api/v1/config`;
+      console.log(`[Config] 请求配置: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
       }
-    });
 
-    // 检查HTTP状态码
-    if (!response.ok) {
-      throw new Error(`HTTP错误! 状态码: ${response.status}`);
+      const data = await response.json();
+      
+      // 兼容您后端的响应格式
+      const remoteConfig = data.config || data; // 双重兼容
+      if (!remoteConfig || typeof remoteConfig !== 'object') {
+        throw new Error('无效的响应格式');
+      }
+
+      // 深度合并配置（保留您原有的合并逻辑）
+      window.AppConfig = { 
+        ...defaults,
+        ...remoteConfig,
+        loading: false,
+        FALLBACK: false
+      };
+      
+    } catch (error) {
+      console.error('[Config] 加载失败:', error);
+      window.AppConfig = { 
+        ...defaults,
+        loading: false,
+        FALLBACK: true 
+      };
+      
+      // 保持您原有的本地开发环境逻辑
+      if (window.location.hostname === 'localhost' || 
+          window.location.hostname === '127.0.0.1') {
+        window.AppConfig.API_BASE_URL = window.location.origin;
+      }
+    } finally {
+      console.log('[Config] 最终配置:', window.AppConfig);
+      // 保持事件触发兼容性
+      document.dispatchEvent(new CustomEvent('configReady', {
+        detail: { config: window.AppConfig }
+      }));
     }
+  };
 
-    // 验证响应内容类型
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new TypeError('返回的不是JSON数据');
-    }
-
-    const remoteConfig = await response.json();
-    
-    // 配置验证
-    if (!remoteConfig || typeof remoteConfig !== 'object') {
-      throw new Error('无效的配置格式');
-    }
-
-    console.log('[Config] 远程配置加载成功:', remoteConfig);
-    
-    // 深度合并配置（保留未覆盖的默认值）
-    window.AppConfig = {
-      ...window.AppConfig,
-      ...remoteConfig,
-      FALLBACK: false
-    };
-
-  } catch (error) {
-    console.error('[Config] 配置加载失败:', error);
-    
-    // 使用备用配置
-    window.AppConfig.FALLBACK = true;
-    
-    // 如果是本地开发环境，自动切换为本地地址
-    if (window.location.hostname === 'localhost' || 
-        window.location.hostname === '127.0.0.1') {
-      window.AppConfig.API_BASE_URL = window.location.origin;
-    }
-  } finally {
-    // 无论成功失败都标记加载完成
-    window.AppConfig.loading = false;
-    
-    console.log('[Config] 最终配置:', window.AppConfig);
-    
-    // 触发配置就绪事件
-    document.dispatchEvent(new Event('configReady'));
-  }
+  // 启动加载（保持原有执行时机）
+  loadConfig();
 })();
+
+// ==================== 注意事项 ==================== 
+// 1. 确保HTML中在app.js之前引入此文件
+// 2. 原有的事件监听器无需修改
+// 3. 访问配置的方式保持不变（仍使用window.AppConfig）

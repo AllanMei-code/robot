@@ -14,11 +14,11 @@ app = Flask(__name__, static_folder='../frontend')
 
 CORS(app, resources={
     r"/api/v1/*": {
-        "origins": "*",
+        "origins": ["http://3.71.28.18:3000", "http://localhost:3000"],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True,
-        "expose_headers": ["Content-Disposition"]
+        "expose_headers": ["Content-Disposition", "Content-Length"]
     }
 })
 #添加路由方法验证
@@ -72,7 +72,7 @@ config_store = ConfigStore()
 
 # ==================== API端点 ====================
 
-@app.route('/api/v1/config', methods=['GET'])
+@app.route('/api/v1/config', methods=['GET', 'OPTIONS'])
 def get_config():
     """动态获取前端配置"""
     return jsonify({
@@ -228,6 +228,7 @@ def health_check():
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Cache-Control')
     return response
 
 @app.errorhandler(405)
