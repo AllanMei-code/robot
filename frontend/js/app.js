@@ -46,10 +46,23 @@ function initApp() {
   }
 
   function addMessage(container, text, type) {
-    const msgElement = document.createElement('div');
-    msgElement.className = `message ${type}`;
-    msgElement.textContent = text;
-    container.appendChild(msgElement);
-    container.scrollTop = container.scrollHeight;
+   const msgWrapper = document.createElement('div');
+  msgWrapper.className = `message-wrapper ${type}`; // 包裹消息，用于颜色区分
+
+  // 添加标题
+  const title = document.createElement('div');
+  title.className = 'message-title';
+  title.textContent = type === 'client' ? '客户' : '客服';
+
+  // 添加消息内容
+  const msgElement = document.createElement('div');
+  msgElement.className = 'message-content';
+  msgElement.textContent = text;
+
+  // 组合
+  msgWrapper.appendChild(title);
+  msgWrapper.appendChild(msgElement);
+  container.appendChild(msgWrapper);
+  container.scrollTop = container.scrollHeight;
   }
 }

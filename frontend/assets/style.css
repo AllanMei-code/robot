@@ -85,3 +85,25 @@ body {
   color: #d32f2f;
   background-color: #ffebee;
 }
+.message-wrapper.client {
+  background-color: #e0f7fa; /* 浅蓝色表示客户 */
+  margin: 5px 0;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.message-wrapper.agent {
+  background-color: #fff3e0; /* 浅橙色表示客服 */
+  margin: 5px 0;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.message-title {
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.message-content {
+  word-wrap: break-word;
+}

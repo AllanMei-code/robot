@@ -4,12 +4,12 @@ import threading
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 from googletrans import Translator
 
 # ==================== 初始化 ====================
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
-socketio = SocketIO(app,cors_allowed_origins=["http://localhost:3000","http://3.71.28.18:3000"])
+socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",
     "http://3.71.28.18:3000"
@@ -158,4 +158,4 @@ def serve_frontend(path):
 
 # ==================== 启动 ====================
 if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
