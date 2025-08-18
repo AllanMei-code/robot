@@ -4,7 +4,7 @@ import threading
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO,emit
 from googletrans import Translator
 
 # ==================== 初始化 ====================
