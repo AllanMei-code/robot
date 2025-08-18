@@ -45,14 +45,14 @@ function initApp() {
     agentInput.value = '';
   }
 
-  function addMessage(container, text, type) {
-   const msgWrapper = document.createElement('div');
-  msgWrapper.className = `message-wrapper ${type}`; // 包裹消息，用于颜色区分
+function addMessage(container, text, sender) {
+  const msgWrapper = document.createElement('div');
+  msgWrapper.className = `message-wrapper ${sender}`; // sender 可以是 'client' 或 'agent'
 
   // 添加标题
   const title = document.createElement('div');
   title.className = 'message-title';
-  title.textContent = type === 'client' ? '客户' : '客服';
+  title.textContent = sender === 'client' ? '客户' : '客服';
 
   // 添加消息内容
   const msgElement = document.createElement('div');
@@ -64,5 +64,6 @@ function initApp() {
   msgWrapper.appendChild(msgElement);
   container.appendChild(msgWrapper);
   container.scrollTop = container.scrollHeight;
-  }
+}
+
 }

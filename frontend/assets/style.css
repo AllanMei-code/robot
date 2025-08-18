@@ -86,14 +86,14 @@ body {
   background-color: #ffebee;
 }
 .message-wrapper.client {
-  background-color: #e0f7fa; /* 浅蓝色表示客户 */
+  background-color: #e0f7fa; /* 客户色：浅蓝 */
   margin: 5px 0;
   padding: 5px 10px;
   border-radius: 8px;
 }
 
 .message-wrapper.agent {
-  background-color: #fff3e0; /* 浅橙色表示客服 */
+  background-color: #fff3e0; /* 客服色：浅橙 */
   margin: 5px 0;
   padding: 5px 10px;
   border-radius: 8px;
