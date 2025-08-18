@@ -5,6 +5,7 @@ function initApp() {
     transports: ['websocket']
   });
 
+  const currentUser = 'client'; // 或 'agent'，根据页面决定
   const clientInput = document.getElementById('client-input');
   const agentInput = document.getElementById('agent-input');
   const clientMessages = document.getElementById('client-messages');
@@ -47,19 +48,22 @@ function initApp() {
 
 function addMessage(container, text, sender) {
   const msgWrapper = document.createElement('div');
-  msgWrapper.className = `message-wrapper ${sender}`; // sender 可以是 'client' 或 'agent'
+  msgWrapper.className = `message-wrapper ${sender}`;
 
-  // 添加标题
   const title = document.createElement('div');
   title.className = 'message-title';
-  title.textContent = sender === 'client' ? '客户' : '客服';
 
-  // 添加消息内容
+  // 判断当前页面身份，显示对应身份标题
+  if (currentUser === 'client') {
+    title.textContent = sender === 'client' ? '客户' : '客服';
+  } else {
+    title.textContent = sender === 'client' ? '客户' : '客服';
+  }
+
   const msgElement = document.createElement('div');
   msgElement.className = 'message-content';
   msgElement.textContent = text;
 
-  // 组合
   msgWrapper.appendChild(title);
   msgWrapper.appendChild(msgElement);
   container.appendChild(msgWrapper);
