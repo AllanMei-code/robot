@@ -13,15 +13,17 @@ function initApp() {
   const API_CHAT_URL = `${window.AppConfig.API_BASE_URL}/api/v1/chat`;
   const API_AGENT_URL = `${window.AppConfig.API_BASE_URL}/api/v1/agent/reply`;
   // 监听服务器推送的新消息
-  socket.on('new_message', (data) => {
-    if (data.from === 'client') {
-      addMessage(clientMessages, data.original, 'client');
-      addMessage(agentMessages, data.translated, 'agent');
-    } else if (data.from === 'agent') {
-      addMessage(agentMessages, data.original, 'agent');
-      addMessage(clientMessages, data.translated, 'client');
-    }
-  });
+socket.on('new_message', (data) => {
+  if (data.from === 'client') {
+    // 客户消息：在客服面板显示原文，在客户面板显示翻译
+    addMessage(agentMessages, data.original, 'client');
+    addMessage(clientMessages, data.translated, 'client');
+  } else if (data.from === 'agent') {
+    // 客服消息：在客服面板显示原文，在客户面板显示翻译
+    addMessage(agentMessages, data.original, 'agent');
+    addMessage(clientMessages, data.translated, 'agent');
+  }
+});
 
   document.getElementById('client-send').addEventListener('click', sendClientMessage);
   clientInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendClientMessage());
@@ -53,11 +55,15 @@ function addMessage(container, text, sender) {
   const title = document.createElement('div');
   title.className = 'message-title';
 
-  // 判断当前页面身份，显示对应身份标题
-  if (currentUser === 'client') {
-    title.textContent = sender === 'client' ? '客户' : '客服';
+  // 根据当前所在面板决定显示标题
+  const isAgentPanel = container.id === 'agent-messages';
+  
+  if (isAgentPanel) {
+    // 在客服面板中：显示消息的真实来源
+    title.textContent = sender === 'client' ? '客户' : '我（客服）';
   } else {
-    title.textContent = sender === 'client' ? '客户' : '客服';
+    // 在客户面板中：显示消息的真实来源
+    title.textContent = sender === 'client' ? '我（客户）' : '客服';
   }
 
   const msgElement = document.createElement('div');
@@ -68,6 +74,5 @@ function addMessage(container, text, sender) {
   msgWrapper.appendChild(msgElement);
   container.appendChild(msgWrapper);
   container.scrollTop = container.scrollHeight;
-}
-
+  }
 }
