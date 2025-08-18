@@ -9,6 +9,7 @@ from googletrans import Translator
 
 # ==================== 初始化 ====================
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
+socketio = SocketIO(app,cors_allowed_origins=["http://localhost:3000","http://3.71.28.18:3000"])
 CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",
     "http://3.71.28.18:3000"
