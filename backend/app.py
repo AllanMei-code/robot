@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 
 # Flask 静态文件设置
-app = Flask(__name__, static_folder='../frontend', static_url_path='')
+app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 
 # CORS 配置（允许前端端口访问）
 CORS(app, supports_credentials=True, origins=[
