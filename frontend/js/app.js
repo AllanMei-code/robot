@@ -16,13 +16,15 @@ function initApp() {
   
   // 监听服务器推送的新消息
 socket.on('new_message', (data) => {
-if (data.from === 'client') {
-    const displayText = data.original || data.translated || '';
-    addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'client');
-} else {
-    const displayText = data.translated || data.original || '';
-    addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'agent');
-}
+    if (data.from === 'client') {
+        // 客户消息
+        const displayText = isClientPanel ? data.original : data.translated;
+        addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'client');
+    } else if (data.from === 'agent') {
+        // 客服消息
+        const displayText = isClientPanel ? data.translated : data.original;
+        addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'agent');
+    }
 });
 
   document.getElementById('client-send').addEventListener('click', sendClientMessage);
