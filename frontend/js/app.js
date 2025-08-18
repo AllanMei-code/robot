@@ -5,23 +5,25 @@ function initApp() {
     transports: ['websocket']
   });
 
-  const currentUser = 'client'; // 或 'agent'，根据页面决定
+  // 判断当前是哪个界面（根据所在面板决定）
+  const isClientPanel = window.location.pathname.includes('client'); // 或者通过其他方式判断
   const clientInput = document.getElementById('client-input');
   const agentInput = document.getElementById('agent-input');
   const clientMessages = document.getElementById('client-messages');
   const agentMessages = document.getElementById('agent-messages');
   const API_CHAT_URL = `${window.AppConfig.API_BASE_URL}/api/v1/chat`;
   const API_AGENT_URL = `${window.AppConfig.API_BASE_URL}/api/v1/agent/reply`;
+  
   // 监听服务器推送的新消息
 socket.on('new_message', (data) => {
   if (data.from === 'client') {
-    // 客户消息：在客服面板显示原文，在客户面板显示翻译
-    addMessage(agentMessages, data.original, 'client');
-    addMessage(clientMessages, data.translated, 'client');
-  } else if (data.from === 'agent') {
-    // 客服消息：在客服面板显示原文，在客户面板显示翻译
-    addMessage(agentMessages, data.original, 'agent');
-    addMessage(clientMessages, data.translated, 'agent');
+    // 客户发来的消息
+    const displayText = isClientPanel ? data.original : data.translated;
+    addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'client');
+  } else {
+    // 客服发来的消息
+    const displayText = isClientPanel ? data.translated : data.original;
+    addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'agent');
   }
 });
 
@@ -54,17 +56,7 @@ function addMessage(container, text, sender) {
 
   const title = document.createElement('div');
   title.className = 'message-title';
-
-  // 根据当前所在面板决定显示标题
-  const isAgentPanel = container.id === 'agent-messages';
-  
-  if (isAgentPanel) {
-    // 在客服面板中：显示消息的真实来源
-    title.textContent = sender === 'client' ? '客户' : '我（客服）';
-  } else {
-    // 在客户面板中：显示消息的真实来源
-    title.textContent = sender === 'client' ? '我（客户）' : '客服';
-  }
+  title.textContent = sender === 'client' ? '客户' : '客服';
 
   const msgElement = document.createElement('div');
   msgElement.className = 'message-content';
@@ -74,5 +66,5 @@ function addMessage(container, text, sender) {
   msgWrapper.appendChild(msgElement);
   container.appendChild(msgWrapper);
   container.scrollTop = container.scrollHeight;
-  }
+}
 }

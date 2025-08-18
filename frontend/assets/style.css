@@ -86,19 +86,28 @@ body {
   background-color: #ffebee;
 }
 .message-wrapper.client {
-  background-color: #e0f7fa; /* 客户色：浅蓝 */
-  margin: 5px 0;
-  padding: 5px 10px;
-  border-radius: 8px;
+  background-color: #e3f2fd; /* 浅蓝色 */
+  margin-left: 20%; /* 在客户界面靠右 */
+  margin-right: 0;
 }
 
+/* 客服消息样式 - 始终一致 */
 .message-wrapper.agent {
-  background-color: #fff3e0; /* 客服色：浅绿色 */
-  margin: 5px 0;
-  padding: 5px 10px;
-  border-radius: 8px;
+  background-color: #e8f5e9; /* 浅绿色 */
+  margin-right: 20%; /* 在客服界面靠右 */
+  margin-left: 0;
 }
 
+/* 根据界面调整对齐方式 */
+#client-panel .message-wrapper.client {
+  margin-left: auto; /* 客户界面中客户消息靠右 */
+  margin-right: 0;
+}
+
+#agent-panel .message-wrapper.agent {
+  margin-right: auto; /* 客服界面中客服消息靠右 */
+  margin-left: 0;
+}
 .message-title {
   font-weight: bold;
   margin-bottom: 3px;
