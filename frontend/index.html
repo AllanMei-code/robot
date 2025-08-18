@@ -1,12 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-
-      <!-- 必须先加载 socket.io 客户端 -->
-  <script>
-    const socket = io("http://3.71.28.18:5000");
-  </script>
-  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>客服系统测试</title>
@@ -15,6 +9,11 @@
 <body>
 
 
+      <!-- 必须先加载 socket.io 客户端 -->
+  <script>
+    const socket = io("http://3.71.28.18:5000");
+  </script>
+  
   <div class="container">
     <div id="client-panel" class="panel">
       <h2>客户界面</h2>
