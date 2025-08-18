@@ -9,11 +9,13 @@
 <body>
 
 
-      <!-- 必须先加载 socket.io 客户端 -->
-  <script>
-    const socket = io("http://3.71.28.18:5000");
-  </script>
-  
+  <!-- ✅ 必须最先加载 socket.io 客户端库 -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <!-- ✅ 再加载你的 config.js 和 app.js -->
+  <script src="/js/config.js"></script>
+  <script src="/js/app.js"></script>
+
   <div class="container">
     <div id="client-panel" class="panel">
       <h2>客户界面</h2>
