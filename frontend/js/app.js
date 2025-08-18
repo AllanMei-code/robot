@@ -16,14 +16,19 @@ function initApp() {
   
   // 监听服务器推送的新消息
 socket.on('new_message', (data) => {
+ let displayText;
+    let container;
+
     if (data.from === 'client') {
         // 客户消息
-        const displayText = isClientPanel ? data.original : data.translated;
-        addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'client');
+        container = isClientPanel ? clientMessages : agentMessages;
+        displayText = isClientPanel ? data.original : data.translated;
+        addMessage(container, displayText, 'client');
     } else if (data.from === 'agent') {
         // 客服消息
-        const displayText = isClientPanel ? data.translated : data.original;
-        addMessage(isClientPanel ? clientMessages : agentMessages, displayText, 'agent');
+        container = isClientPanel ? clientMessages : agentMessages;
+        displayText = isClientPanel ? data.translated : data.original;
+        addMessage(container, displayText, 'agent');
     }
 });
 
