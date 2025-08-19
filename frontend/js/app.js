@@ -6,7 +6,6 @@ function initApp() {
   });
 
   // 判断当前是哪个界面（根据所在面板决定）
-  const isClientPanel = window.location.pathname.includes('client'); // 或者通过其他方式判断
   const clientInput = document.getElementById('client-input');
   const agentInput = document.getElementById('agent-input');
   const clientMessages = document.getElementById('client-messages');
@@ -16,28 +15,28 @@ function initApp() {
   
   // 监听服务器推送的新消息
 socket.on('new_message', (data) => {
-    let displayText;
+    let clientDisplayText, agentDisplayText;
 
-    if (isClientPanel) {
-        // 客户界面
-        if (data.from === 'client') {
-            displayText = data.original;   // 客户看原文
-            addMessage(clientMessages, displayText, 'client');
-        } else if (data.from === 'agent') {
-            displayText = data.translated; // 客户看翻译后的语言
-            addMessage(clientMessages, displayText, 'agent');
-        }
-    } else {
-        // 客服界面
-        if (data.from === 'client') {
-            displayText = data.translated; // 客服看翻译后的中文
-            addMessage(agentMessages, displayText, 'client');
-        } else if (data.from === 'agent') {
-            displayText = data.original;   // 客服看原文中文
-            addMessage(agentMessages, displayText, 'agent');
-        }
+    if (data.from === 'client') {
+        // 客户自己看原文
+        clientDisplayText = data.original;
+        // 客服看翻译后的中文
+        agentDisplayText = data.translated;
+        
+        addMessage(clientMessages, clientDisplayText, 'client');
+        addMessage(agentMessages, agentDisplayText, 'client');
+
+    } else if (data.from === 'agent') {
+        // 客户看翻译后的语言
+        clientDisplayText = data.translated;
+        // 客服自己看中文原文
+        agentDisplayText = data.original;
+
+        addMessage(clientMessages, clientDisplayText, 'agent');
+        addMessage(agentMessages, agentDisplayText, 'agent');
     }
 });
+
 
   document.getElementById('client-send').addEventListener('click', sendClientMessage);
   clientInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendClientMessage());
