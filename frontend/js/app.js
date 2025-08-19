@@ -16,19 +16,26 @@ function initApp() {
   
   // 监听服务器推送的新消息
 socket.on('new_message', (data) => {
- let displayText;
-    let container;
+    let displayText;
 
-    if (data.from === 'client') {
-        // 客户消息
-        container = isClientPanel ? clientMessages : agentMessages;
-        displayText = isClientPanel ? data.original : data.translated;
-        addMessage(container, displayText, 'client');
-    } else if (data.from === 'agent') {
-        // 客服消息
-        container = isClientPanel ? clientMessages : agentMessages;
-        displayText = isClientPanel ? data.translated : data.original;
-        addMessage(container, displayText, 'agent');
+    if (isClientPanel) {
+        // 客户界面
+        if (data.from === 'client') {
+            displayText = data.original;   // 客户看原文
+            addMessage(clientMessages, displayText, 'client');
+        } else if (data.from === 'agent') {
+            displayText = data.translated; // 客户看翻译后的语言
+            addMessage(clientMessages, displayText, 'agent');
+        }
+    } else {
+        // 客服界面
+        if (data.from === 'client') {
+            displayText = data.translated; // 客服看翻译后的中文
+            addMessage(agentMessages, displayText, 'client');
+        } else if (data.from === 'agent') {
+            displayText = data.original;   // 客服看原文中文
+            addMessage(agentMessages, displayText, 'agent');
+        }
     }
 });
 
