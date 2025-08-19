@@ -33,6 +33,7 @@
       display: flex;
       gap: 5px;
       margin-bottom: 5px;
+      align-items: center;
     }
     .input-area input[type="text"] {
       flex: 1;
@@ -66,13 +67,33 @@
       max-height: 150px;
       border-radius: 8px;
     }
-    .emoji-panel {
-      margin-top: 5px;
+
+    /* 表情按钮和面板 */
+    .emoji-btn {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
     }
-    .emoji {
+    .emoji-panel {
+      display: none;
+      position: absolute;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      margin-top: 5px;
+      z-index: 10;
+    }
+    .emoji-panel span {
       cursor: pointer;
       font-size: 20px;
-      margin-right: 5px;
+      margin: 3px;
+      display: inline-block;
+    }
+    .emoji-container {
+      position: relative;
     }
   </style>
 </head>
@@ -85,13 +106,12 @@
       <div class="input-area">
         <input type="text" id="client-input" placeholder="输入消息...">
         <input type="file" id="client-file" accept="image/*">
+        <button class="emoji-btn" id="client-emoji-btn">😊</button>
         <button id="client-send">发送</button>
-      </div>
-      <div id="client-emoji-panel" class="emoji-panel">
-        <span class="emoji">😀</span>
-        <span class="emoji">😂</span>
-        <span class="emoji">❤️</span>
-        <span class="emoji">👍</span>
+        <div id="client-emoji-panel" class="emoji-panel">
+          <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
+          <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
+        </div>
       </div>
     </div>
 
@@ -102,13 +122,12 @@
       <div class="input-area">
         <input type="text" id="agent-input" placeholder="输入回复...">
         <input type="file" id="agent-file" accept="image/*">
+        <button class="emoji-btn" id="agent-emoji-btn">😊</button>
         <button id="agent-send">发送</button>
-      </div>
-      <div id="agent-emoji-panel" class="emoji-panel">
-        <span class="emoji">😀</span>
-        <span class="emoji">😂</span>
-        <span class="emoji">❤️</span>
-        <span class="emoji">👍</span>
+        <div id="agent-emoji-panel" class="emoji-panel">
+          <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
+          <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
+        </div>
       </div>
     </div>
   </div>
@@ -118,5 +137,34 @@
   <!-- ✅ 再加载你的 config.js 和 app.js -->
   <script src="/js/config.js"></script>
   <script src="/js/app.js"></script>
+
+  <script>
+    // 绑定表情展开/选择逻辑
+    function setupEmoji(panelId, btnId, inputId) {
+      const panel = document.getElementById(panelId);
+      const btn = document.getElementById(btnId);
+      const input = document.getElementById(inputId);
+
+      btn.addEventListener("click", () => {
+        panel.style.display = panel.style.display === "block" ? "none" : "block";
+      });
+
+      panel.querySelectorAll("span").forEach(span => {
+        span.addEventListener("click", () => {
+          input.value += span.textContent;
+          panel.style.display = "none";
+        });
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!btn.contains(e.target) && !panel.contains(e.target)) {
+          panel.style.display = "none";
+        }
+      });
+    }
+
+    setupEmoji("client-emoji-panel", "client-emoji-btn", "client-input");
+    setupEmoji("agent-emoji-panel", "agent-emoji-btn", "agent-input");
+  </script>
 </body>
 </html>
