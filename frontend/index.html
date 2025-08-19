@@ -6,23 +6,35 @@
   <title>客服系统测试</title>
   <link rel="stylesheet" href="/assets/style.css">
 </head>
-<body>
   <div class="container">
     <div id="client-panel" class="panel">
       <h2>客户界面</h2>
       <div class="message-area" id="client-messages"></div>
       <div class="input-area">
         <input type="text" id="client-input" placeholder="输入消息...">
+        <input type="file" id="client-file" accept="image/*">
         <button id="client-send">发送</button>
       </div>
+      <div id="client-emoji-panel" class="emoji-panel">
+        <span class="emoji">😀</span>
+        <span class="emoji">😂</span>
+        <span class="emoji">❤️</span>
+        <span class="emoji">👍</span>
+      </div>
     </div>
-
     <div id="agent-panel" class="panel">
       <h2>客服界面</h2>
       <div class="message-area" id="agent-messages"></div>
       <div class="input-area">
         <input type="text" id="agent-input" placeholder="输入回复...">
+        <input type="file" id="agent-file" accept="image/*">
         <button id="agent-send">发送</button>
+      </div>
+          <div id="client-emoji-panel" class="emoji-panel">
+          <span class="emoji">😀</span>
+          <span class="emoji">😂</span>
+          <span class="emoji">❤️</span>
+          <span class="emoji">👍</span>
       </div>
     </div>
   </div>

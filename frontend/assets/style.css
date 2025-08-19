@@ -116,3 +116,47 @@ body {
 .message-content {
   word-wrap: break-word;
 }
+.message-wrapper {
+  display: flex;
+  margin: 5px 0;
+}
+
+.message-wrapper.left {
+  justify-content: flex-start;
+}
+
+.message-wrapper.right {
+  justify-content: flex-end;
+}
+
+.message-content {
+  max-width: 60%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f0f0f0;
+  word-wrap: break-word;
+}
+
+.message-content.client {
+  background: #d1f0d1; /* 客户消息浅绿色 */
+}
+
+.message-content.agent {
+  background: #d1d9f0; /* 客服消息浅蓝色 */
+}
+
+.chat-image {
+  max-width: 150px;
+  max-height: 150px;
+  border-radius: 8px;
+}
+
+.emoji-panel {
+  margin-top: 5px;
+}
+
+.emoji {
+  cursor: pointer;
+  font-size: 20px;
+  margin-right: 5px;
+}
