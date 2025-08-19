@@ -5,8 +5,80 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>客服系统测试</title>
   <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .container {
+      display: flex;
+      justify-content: space-around;
+      gap: 20px;
+      padding: 20px;
+    }
+    .panel {
+      width: 45%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message-area {
+      flex: 1;
+      border: 1px solid #eee;
+      padding: 10px;
+      margin-bottom: 10px;
+      height: 400px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .input-area {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+    .input-area input[type="text"] {
+      flex: 1;
+      padding: 6px;
+    }
+    .message-wrapper {
+      display: flex;
+      margin: 5px 0;
+    }
+    .message-wrapper.left {
+      justify-content: flex-start;
+    }
+    .message-wrapper.right {
+      justify-content: flex-end;
+    }
+    .message-content {
+      max-width: 60%;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #f0f0f0;
+      word-wrap: break-word;
+    }
+    .message-content.client {
+      background: #d1f0d1; /* 客户消息浅绿色 */
+    }
+    .message-content.agent {
+      background: #d1d9f0; /* 客服消息浅蓝色 */
+    }
+    .chat-image {
+      max-width: 150px;
+      max-height: 150px;
+      border-radius: 8px;
+    }
+    .emoji-panel {
+      margin-top: 5px;
+    }
+    .emoji {
+      cursor: pointer;
+      font-size: 20px;
+      margin-right: 5px;
+    }
+  </style>
 </head>
+<body>
   <div class="container">
+    <!-- 客户界面 -->
     <div id="client-panel" class="panel">
       <h2>客户界面</h2>
       <div class="message-area" id="client-messages"></div>
@@ -22,6 +94,8 @@
         <span class="emoji">👍</span>
       </div>
     </div>
+
+    <!-- 客服界面 -->
     <div id="agent-panel" class="panel">
       <h2>客服界面</h2>
       <div class="message-area" id="agent-messages"></div>
@@ -30,14 +104,15 @@
         <input type="file" id="agent-file" accept="image/*">
         <button id="agent-send">发送</button>
       </div>
-          <div id="client-emoji-panel" class="emoji-panel">
-          <span class="emoji">😀</span>
-          <span class="emoji">😂</span>
-          <span class="emoji">❤️</span>
-          <span class="emoji">👍</span>
+      <div id="agent-emoji-panel" class="emoji-panel">
+        <span class="emoji">😀</span>
+        <span class="emoji">😂</span>
+        <span class="emoji">❤️</span>
+        <span class="emoji">👍</span>
       </div>
     </div>
   </div>
+
   <!-- ✅ 必须最先加载 socket.io 客户端库 -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <!-- ✅ 再加载你的 config.js 和 app.js -->
