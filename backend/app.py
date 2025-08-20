@@ -1,14 +1,16 @@
 import eventlet
 eventlet.monkey_patch()  # 解决 Flask-SocketIO 的兼容性问题
-
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 import threading
 import logging
 from datetime import datetime
+
+translated = GoogleTranslator(source='auto', target='zh-CN').translate("Bonjour")
+print(translated)
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app, supports_credentials=True, origins=[
