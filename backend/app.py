@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()  # 解决 Flask-SocketIO 的兼容性问题
+
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -134,6 +137,8 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # 开发环境直接跑；生产用 gunicorn -k eventlet 启动也可以
+#    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__" and os.getenv("FLASK_ENV") != "production":
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
