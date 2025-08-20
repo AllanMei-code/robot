@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO,emit
 from googletrans import Translator
+from werkzeug.utils import secure_filename
 
 # ==================== 初始化 ====================
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
@@ -41,6 +42,38 @@ class ConfigStore:
         }
 
 config_store = ConfigStore()
+
+
+# ==================== 添加图片处理路由 ====================
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        return jsonify({
+            "url": f"http://3.71.28.18:5000/uploads/{filename}",  # ✅ 完整URL
+            "filename": filename
+        })
+    
+    return jsonify({"error": "Invalid file type"}), 400
 
 
 # ==================== REST API ====================
@@ -111,6 +144,15 @@ def handle_agent_reply():
 @socketio.on('client_message')
 def handle_client_message(data):
     try:
+        if data.get("type") == "image":
+            emit('new_message', {
+                "from": "client",
+                "type": "image",
+                "url": data['url'],  # 上传后的访问地址
+                "timestamp": datetime.now().isoformat()
+            }, broadcast=True)
+            return
+
         message = data.get('message', '').strip()
         if not message:
             return
@@ -120,9 +162,11 @@ def handle_client_message(data):
             translated = translator.translate(message, src=lang, dest='zh-cn').text
         emit('new_message', {
             "from": "client",
+            "type": "text",
             "original": message,
             "translated": translated,
-            "detected_lang": lang
+            "detected_lang": lang,
+            "timestamp": datetime.now().isoformat()
         }, broadcast=True)
     except Exception as e:
         logging.error(f"Socket client_message error: {str(e)}")
@@ -131,6 +175,15 @@ def handle_client_message(data):
 @socketio.on('agent_message')
 def handle_agent_message(data):
     try:
+        if data.get("type") == "image":
+            emit('new_message', {
+                "from": "agent",
+                "type": "image",
+                "url": data['url'],
+                "timestamp": datetime.now().isoformat()
+            }, broadcast=True)
+            return
+
         message = data.get('message', '').strip()
         target_lang = data.get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
         if not message:
@@ -139,9 +192,11 @@ def handle_agent_message(data):
             translated = translator.translate(message, src='zh-cn', dest=target_lang).text
         emit('new_message', {
             "from": "agent",
+            "type": "text",
             "original": message,
             "translated": translated,
-            "target_lang": target_lang
+            "target_lang": target_lang,
+            "timestamp": datetime.now().isoformat()
         }, broadcast=True)
     except Exception as e:
         logging.error(f"Socket agent_message error: {str(e)}")
@@ -154,7 +209,9 @@ def serve_frontend(path):
     if path and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
-
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ==================== 启动 ====================
 if __name__ == "__main__":

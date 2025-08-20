@@ -26,9 +26,12 @@ body {
 }
 
 .input-area {
-  padding: 10px;
-  display: flex;
-  border-top: 1px solid #ddd;
+  position: relative; /* 关键，让 emoji-panel 相对 input-area 定位 */
+}
+.emoji-panel {
+  position: absolute;
+  bottom: 40px; /* 在按钮上方显示 */
+  left: 0;
 }
 
 .input-area input {
@@ -159,4 +162,8 @@ body {
   cursor: pointer;
   font-size: 20px;
   margin-right: 5px;
+}
+.upload-icon {
+  cursor: pointer;
+  font-size: 20px;
 }

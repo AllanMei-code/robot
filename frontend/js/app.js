@@ -80,20 +80,19 @@ function initApp() {
   });
 
   // 客服端上传图片
-  document.getElementById('agent-file')?.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      const base64 = evt.target.result;
-      socket.emit('agent_message', { 
-        image: base64,
-        target_lang: window.AppConfig.DEFAULT_CLIENT_LANG || 'fr'
-      });
-      addMessage(agentMessages, `<img src="${base64}" class="chat-image">`, 'agent', 'right');
-    };
-    reader.readAsDataURL(file);
-  });
+document.getElementById("client-file").addEventListener("change", function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    socket.emit("chat message", {
+      from: "client",
+      type: "image",
+      data: e.target.result
+    });
+  };
+  reader.readAsDataURL(file);
+});
 
   // 表情选择（客户）
   document.querySelectorAll('#client-emoji-panel .emoji').forEach(emoji => {
