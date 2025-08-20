@@ -25,13 +25,16 @@ body {
   background: #f9f9f9;
 }
 
+/* 输入区和 emoji 定位 */
 .input-area {
-  position: relative; /* 关键，让 emoji-panel 相对 input-area 定位 */
+  position: relative;
 }
+
 .emoji-panel {
   position: absolute;
-  bottom: 40px; /* 在按钮上方显示 */
+  bottom: 40px;
   left: 0;
+  margin-top: 5px;
 }
 
 .input-area input {
@@ -41,129 +44,94 @@ body {
   border-radius: 4px;
 }
 
-.input-area button {
-  margin-left: 10px;
-  padding: 8px 15px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+/* 工具栏容器 */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 统一按钮尺寸 */
+.tool-btn,
+#client-send,
+#agent-send,
+label[for="client-file"],
+label[for="agent-file"] {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  user-select: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
 }
 
-.message {
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  max-width: 80%;
+/* 发送按钮主色 */
+.tool-btn.primary,
+#client-send.primary,
+#agent-send.primary {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
 }
 
-.message.client {
-  background: #e3f2fd;
-  margin-right: auto;
+/* 隐藏原生 file input */
+input[type="file"]#client-file,
+input[type="file"]#agent-file {
+  display: none;
 }
 
-.message.agent {
-  background: #e8f5e9;
-  margin-left: auto;
-}
-
-.message.error {
-  background: #ffebee;
-  color: #c62828;
-}
-.message.loading {
-  color: #666;
-  font-style: italic;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
-}
-
-.message.error {
-  color: #d32f2f;
-  background-color: #ffebee;
-}
-.message-wrapper.client {
-  background-color: #e3f2fd; /* 浅蓝色 */
-  margin-left: 20%; /* 在客户界面靠右 */
-  margin-right: 0;
-}
-
-/* 客服消息样式 - 始终一致 */
-.message-wrapper.agent {
-  background-color: #e8f5e9; /* 浅绿色 */
-  margin-right: 20%; /* 在客服界面靠右 */
-  margin-left: 0;
-}
-
-/* 根据界面调整对齐方式 */
-#client-panel .message-wrapper.client {
-  margin-left: auto; /* 客户界面中客户消息靠右 */
-  margin-right: 0;
-}
-
-#agent-panel .message-wrapper.agent {
-  margin-right: auto; /* 客服界面中客服消息靠右 */
-  margin-left: 0;
-}
-.message-title {
-  font-weight: bold;
-  margin-bottom: 3px;
-}
-
-.message-content {
-  word-wrap: break-word;
-}
+/* 消息样式 */
 .message-wrapper {
   display: flex;
-  margin: 5px 0;
+  margin: 8px 0;
 }
-
 .message-wrapper.left {
   justify-content: flex-start;
 }
-
 .message-wrapper.right {
   justify-content: flex-end;
 }
 
 .message-content {
-  max-width: 60%;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: #f0f0f0;
+  max-width: 70%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
   word-wrap: break-word;
 }
-
 .message-content.client {
-  background: #d1f0d1; /* 客户消息浅绿色 */
+  background: #e6f7ff;
+  color: #003a8c;
 }
-
 .message-content.agent {
-  background: #d1d9f0; /* 客服消息浅蓝色 */
+  background: #fff4e6;
+  color: #7a3d00;
 }
 
+.message-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: .8;
+}
+
+/* 图片消息 */
 .chat-image {
-  max-width: 150px;
-  max-height: 150px;
+  max-width: 240px;
+  max-height: 240px;
   border-radius: 8px;
+  display: block;
 }
 
-.emoji-panel {
-  margin-top: 5px;
-}
-
+/* emoji 样式 */
 .emoji {
   cursor: pointer;
   font-size: 20px;
   margin-right: 5px;
-}
-.upload-icon {
-  cursor: pointer;
-  font-size: 20px;
 }

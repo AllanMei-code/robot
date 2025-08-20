@@ -1,93 +1,112 @@
 document.addEventListener('configReady', initApp);
 
 function initApp() {
-  const socket = io("http://3.71.28.18:5000", {
-    transports: ['websocket']
-  });
+  const socket = io("http://3.71.28.18:5000", { transports: ['websocket'] });
 
   const clientInput = document.getElementById('client-input');
-  const agentInput = document.getElementById('agent-input');
-  const clientMessages = document.getElementById('client-messages');
-  const agentMessages = document.getElementById('agent-messages');
+  const agentInput  = document.getElementById('agent-input');
+  const clientMsgs  = document.getElementById('client-messages'); // 客户页面容器（存在则代表当前是客户视图）
+  const agentMsgs   = document.getElementById('agent-messages');  // 客服页面容器（存在则代表当前是客服视图）
 
-  // 监听服务器推送的新消息（统一入口）
+  // 统一只从服务器广播渲染，避免重复
   socket.on('new_message', (data) => {
-    let displayText;
-
+    // 图片：两边都按图片显示，不涉及翻译
     if (data.image) {
-      displayText = `<img src="${data.image}" class="chat-image">`;
-    } else {
-      displayText = data.from === 'client' ? data.original : data.translated;
+      if (clientMsgs) addMessage(clientMsgs, `<img src="${data.image}" class="chat-image">`, data.from, data.from === 'client' ? 'right' : 'left', true);
+      if (agentMsgs)  addMessage(agentMsgs,  `<img src="${data.image}" class="chat-image">`,  data.from, data.from === 'agent'  ? 'right' : 'left', true);
+      return;
     }
 
-    if (clientMessages) {
-      // 客户界面
+    // 文本：根据当前面板决定显示 original 还是 translated
+    if (clientMsgs) {
+      // 客户页面：自己发的看 original（右），客服来的看 translated（左）
       if (data.from === 'client') {
-        addMessage(clientMessages, data.original, 'client', 'right');
+        addMessage(clientMsgs, data.original || '', 'client', 'right');
       } else if (data.from === 'agent') {
-        addMessage(clientMessages, displayText, 'agent', 'left');
+        addMessage(clientMsgs, data.translated || data.original || '', 'agent', 'left');
       }
     }
 
-    if (agentMessages) {
-      // 客服界面
+    if (agentMsgs) {
+      // 客服页面：客户来的看 translated（左，中文），自己发的看 original（右，中文）
       if (data.from === 'client') {
-        addMessage(agentMessages, displayText, 'client', 'left');
+        addMessage(agentMsgs, data.translated || data.original || '', 'client', 'left');
       } else if (data.from === 'agent') {
-        addMessage(agentMessages, data.original, 'agent', 'right');
+        addMessage(agentMsgs, data.original || '', 'agent', 'right');
       }
     }
   });
 
-  // 客户端发送文字消息
-  document.getElementById('client-send')?.addEventListener('click', sendClientMessage);
-  clientInput?.addEventListener('keypress', (e) => e.key === 'Enter' && sendClientMessage());
-
-  function sendClientMessage() {
+  // ===== 发送文本（不本地渲染，等服务器广播） =====
+  document.getElementById('client-send')?.addEventListener('click', () => {
     const msg = clientInput.value.trim();
     if (!msg) return;
     socket.emit('client_message', { message: msg });
     clientInput.value = '';
-  }
+  });
+  clientInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('client-send').click());
 
-  // 客服端发送文字消息
-  document.getElementById('agent-send')?.addEventListener('click', sendAgentMessage);
-  agentInput?.addEventListener('keypress', (e) => e.key === 'Enter' && sendAgentMessage());
-
-  function sendAgentMessage() {
+  document.getElementById('agent-send')?.addEventListener('click', () => {
     const msg = agentInput.value.trim();
     if (!msg) return;
     socket.emit('agent_message', { 
       message: msg,
-      target_lang: window.AppConfig.DEFAULT_CLIENT_LANG || 'fr'
+      target_lang: window.AppConfig?.DEFAULT_CLIENT_LANG || 'fr'
     });
     agentInput.value = '';
-  }
+  });
+  agentInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('agent-send').click());
 
-  // 客户端上传图片
+  // ===== 上传图片（客户端 & 客服端）=====
   document.getElementById('client-file')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(evt) {
-      const base64 = evt.target.result;
-      socket.emit('client_message', { image: base64 });
+    reader.onload = (evt) => {
+      socket.emit('client_message', { image: evt.target.result });
     };
     reader.readAsDataURL(file);
+    e.target.value = ''; // 允许重复选择同一文件
   });
 
-  // 添加消息到 UI
-  function addMessage(container, text, sender, align) {
+  document.getElementById('agent-file')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      socket.emit('agent_message', { image: evt.target.result });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  // ===== UI 渲染 =====
+  function addMessage(container, content, sender, align, isHTML = false) {
     if (!container) return;
-    const msgWrapper = document.createElement('div');
-    msgWrapper.className = `message-wrapper ${align}`;
+    const wrap = document.createElement('div');
+    wrap.className = `message-wrapper ${align}`;
 
-    const msgElement = document.createElement('div');
-    msgElement.className = `message-content ${sender}`;
-    msgElement.innerHTML = text;
+    const bubble = document.createElement('div');
+    bubble.className = `message-content ${sender}`;
 
-    msgWrapper.appendChild(msgElement);
-    container.appendChild(msgWrapper);
+    // 标题：客户/客服
+    const title = document.createElement('div');
+    title.className = 'message-title';
+    title.textContent = sender === 'client' ? '客户' : '客服';
+
+    const body = document.createElement('div');
+    body.className = 'message-body';
+
+    if (isHTML) {
+      body.innerHTML = content;      // 用于 <img>，注意不要把任意不可信 HTML 放进来
+    } else {
+      body.textContent = content ?? '';
+    }
+
+    bubble.appendChild(title);
+    bubble.appendChild(body);
+    wrap.appendChild(bubble);
+    container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
   }
 }

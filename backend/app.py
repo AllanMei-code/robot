@@ -1,36 +1,31 @@
 import os
-import logging
-import threading
-from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO,emit
+from flask_socketio import SocketIO, emit
 from googletrans import Translator
-from werkzeug.utils import secure_filename
+import threading
+import logging
+from datetime import datetime
 
-# ==================== 初始化 ====================
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
-socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",
     "http://3.71.28.18:3000"
 ])
 
-# 启用 SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-# 日志配置
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.StreamHandler()]
+# 关键：允许较大的 Socket 传输（图像）
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=["http://localhost:3000", "http://3.71.28.18:3000"],
+    async_mode="eventlet",                 # 或 "gevent"；开发下用内置也行
+    max_http_buffer_size=20 * 1024 * 1024  # 20MB，按需增减
 )
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 translator_lock = threading.Lock()
 translator = Translator(service_urls=['translate.google.com'])
 
-
-# ==================== 配置存储 ====================
 class ConfigStore:
     def __init__(self):
         base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")
@@ -40,43 +35,9 @@ class ConfigStore:
             "TRANSLATION_ENABLED": True,
             "MAX_MESSAGE_LENGTH": 500
         }
-
 config_store = ConfigStore()
 
-
-# ==================== 添加图片处理路由 ====================
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@app.route('/api/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        return jsonify({
-            "url": f"http://3.71.28.18:5000/uploads/{filename}",  # ✅ 完整URL
-            "filename": filename
-        })
-    
-    return jsonify({"error": "Invalid file type"}), 400
-
-
-# ==================== REST API ====================
+# ============== REST（保留你现有的） ==============
 @app.route('/api/v1/config', methods=['GET'])
 def get_config():
     return jsonify({
@@ -85,134 +46,94 @@ def get_config():
         "timestamp": datetime.now().isoformat()
     })
 
+# 其余 REST 路由略……（你已有的可保留）
 
-@app.route('/api/v1/chat', methods=['POST'])
-def handle_chat():
+# ============== WebSocket 事件 ==============
+def translate_safe(text, src, dest):
+    if not text:
+        return text
     try:
-        data = request.get_json()
-        if not data or 'message' not in data:
-            return jsonify({"error": "Invalid request format"}), 400
-        message = data['message'].strip()
-        if not message:
-            return jsonify({"error": "Message cannot be empty"}), 400
-        if len(message) > config_store.config["MAX_MESSAGE_LENGTH"]:
-            return jsonify({"error": "Message too long"}), 400
-
         with translator_lock:
-            detected = translator.detect(message[:100])
-            lang = detected.lang
-            if lang != 'zh-cn' and config_store.config["TRANSLATION_ENABLED"]:
-                translated = translator.translate(message, src=lang, dest='zh-cn').text
-            else:
-                translated = message
-
-        logging.info(f"Translation: {lang} -> zh-cn | {message[:20]}... -> {translated[:20]}...")
-
-        return jsonify({
-            "status": "success",
-            "original": message,
-            "translated": translated,
-            "detected_lang": lang,
-            "timestamp": datetime.now().isoformat()
-        })
+            return translator.translate(text, src=src, dest=dest).text
     except Exception as e:
-        logging.error(f"Chat error: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        logging.warning(f"translate_safe failed: {e}")
+        return text  # 失败就回退原文，避免中断
 
-
-@app.route('/api/v1/agent/reply', methods=['POST'])
-def handle_agent_reply():
-    try:
-        data = request.get_json()
-        message = data.get('message', '').strip()
-        target_lang = data.get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
-        with translator_lock:
-            translated = translator.translate(message, src='zh-cn', dest=target_lang).text
-        return jsonify({
-            "status": "success",
-            "original": message,
-            "translated": translated,
-            "target_lang": target_lang,
-            "timestamp": datetime.now().isoformat()
-        })
-    except Exception as e:
-        logging.error(f"Agent reply error: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-# ==================== SocketIO 事件 ====================
 @socketio.on('client_message')
 def handle_client_message(data):
-    try:
-        if data.get("type") == "image":
-            emit('new_message', {
-                "from": "client",
-                "type": "image",
-                "url": data['url'],  # 上传后的访问地址
-                "timestamp": datetime.now().isoformat()
-            }, broadcast=True)
-            return
+    """
+    客户发来文本或图片：
+    - 文本：翻译成中文给客服端（agent 看到中文）
+    - 图片：原样广播（两端都能看）
+    """
+    msg = (data or {}).get('message', '').strip()
+    image = (data or {}).get('image')
 
-        message = data.get('message', '').strip()
-        if not message:
-            return
-        with translator_lock:
-            detected = translator.detect(message[:100])
-            lang = detected.lang
-            translated = translator.translate(message, src=lang, dest='zh-cn').text
+    if image:
         emit('new_message', {
             "from": "client",
-            "type": "text",
-            "original": message,
-            "translated": translated,
-            "detected_lang": lang,
-            "timestamp": datetime.now().isoformat()
+            "image": image
         }, broadcast=True)
-    except Exception as e:
-        logging.error(f"Socket client_message error: {str(e)}")
+        return
 
+    if not msg:
+        return
+
+    # 检测语言并翻译 -> 中文（给客服端看的）
+    try:
+        with translator_lock:
+            det = translator.detect(msg[:100])
+            lang = det.lang
+    except Exception:
+        lang = 'auto'
+
+    translated_zh = translate_safe(msg, src=lang if lang else 'auto', dest='zh-cn') \
+        if config_store.config["TRANSLATION_ENABLED"] else msg
+
+    emit('new_message', {
+        "from": "client",
+        "original": msg,           # 客户端页面看原文（右侧）
+        "translated": translated_zh  # 客服端页面显示中文（左侧）
+    }, broadcast=True)
 
 @socketio.on('agent_message')
 def handle_agent_message(data):
-    try:
-        if data.get("type") == "image":
-            emit('new_message', {
-                "from": "agent",
-                "type": "image",
-                "url": data['url'],
-                "timestamp": datetime.now().isoformat()
-            }, broadcast=True)
-            return
+    """
+    客服发来文本或图片：
+    - 文本：从中文翻译成目标语言给客户端
+    - 图片：原样广播
+    """
+    msg = (data or {}).get('message', '').strip()
+    image = (data or {}).get('image')
+    target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
 
-        message = data.get('message', '').strip()
-        target_lang = data.get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
-        if not message:
-            return
-        with translator_lock:
-            translated = translator.translate(message, src='zh-cn', dest=target_lang).text
+    if image:
         emit('new_message', {
             "from": "agent",
-            "type": "text",
-            "original": message,
-            "translated": translated,
-            "target_lang": target_lang,
-            "timestamp": datetime.now().isoformat()
+            "image": image
         }, broadcast=True)
-    except Exception as e:
-        logging.error(f"Socket agent_message error: {str(e)}")
+        return
 
+    if not msg:
+        return
 
-# ==================== 前端静态文件 ====================
+    translated_client = translate_safe(msg, src='zh-cn', dest=target_lang) \
+        if config_store.config["TRANSLATION_ENABLED"] else msg
+
+    emit('new_message', {
+        "from": "agent",
+        "original": msg,             # 客服端页面看原文（右侧，中文）
+        "translated": translated_client  # 客户端页面显示目标语（左侧）
+    }, broadcast=True)
+
+# ============== 静态文件（保留） ==============
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
     if path and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
-@app.route('/uploads/<path:filename>')
-def serve_upload(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# ==================== 启动 ====================
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    # 开发环境直接跑；生产用 gunicorn -k eventlet 启动也可以
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
