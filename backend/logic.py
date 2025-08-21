@@ -3,24 +3,19 @@
 def get_bot_reply(message: str) -> str:
     msg_lower = message.lower()
     withdraw_keywords = [
-        "retrait",
-        "retraits",
-        "retirer",
-        "paiement",
-        "argent",
-        "compte",
-        "transfert"
+        "retrait", "retraits", "retirer", "paiement", "argent", "compte", "transfert",  # 法语
+        "提现", "支付", "钱", "账户", "转账"  # 中文
     ]
 
     for keyword in withdraw_keywords:
         if keyword in msg_lower:
             return "En raison de l'instabilité des canaux de paiement, veuillez patienter"
 
-    if "bonjour" in msg_lower:
+    if "bonjour" in msg_lower or "你好" in msg_lower:
         return "Bonjour, bienvenue chez gamesawa，Comment puis-je vous aider ?"
     if "*" in msg_lower:
         return "Veuillez décrire en détail le problème que vous avez rencontré"
-    if "j'ai effectué un retrait que je n'ai pas encore reçu" in msg_lower:
+    if "j'ai effectué un retrait que je n'ai pas encore reçu" in msg_lower or "我已申请提现但尚未到账" in msg_lower:
         return "En raison de l'instabilité des canaux de paiement, veuillez patienter"
 
     return "Désolé, je ne peux pas répondre à cette question pour le moment. Notre service client vous contactera dès que possible."
