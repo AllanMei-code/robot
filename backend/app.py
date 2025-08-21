@@ -7,6 +7,8 @@ from flask_socketio import SocketIO, emit
 from deep_translator import GoogleTranslator
 import threading
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # ============== 翻译封装 ==============
 translator_lock = threading.Lock()
 
@@ -21,7 +23,11 @@ def translate_text(text, target="zh-CN"):
         return text
 
 # ============== 初始化 ==============
-app = Flask(__name__, static_folder='../frontend', static_url_path='')
+app = Flask(
+    __name__,
+    static_folder=os.path.join(BASE_DIR, "frontend"),
+    static_url_path=""
+)
 CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",
     "http://3.71.28.18:3000"
