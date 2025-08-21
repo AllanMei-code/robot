@@ -42,8 +42,6 @@ function initApp() {
         addMessage(agentMsgs, data.original || '', 'agent', 'right');
       }
     }
-
-
   });
 
   // ===== 发送文本（不本地渲染，等服务器广播） =====
