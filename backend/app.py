@@ -74,6 +74,21 @@ def get_config():
         "timestamp": datetime.now().isoformat()
     })
 
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.json
+    msg = data.get('message', '')
+    # 直接用原文做机器人匹配（不翻译）
+    bot_reply = get_bot_reply(msg)
+    # 客服端显示中文（翻译机器人回复为中文）
+    reply_zh = GoogleTranslator(source='auto', target='zh-CN').translate(bot_reply)
+    # 客户端显示法语（翻译机器人回复为法语）
+    reply_fr = GoogleTranslator(source='auto', target='fr').translate(bot_reply)
+    return jsonify({
+        'reply_fr': reply_fr,
+        'reply_zh': reply_zh
+    })
+
 # ============== WebSocket 事件 ==============
 @socketio.on('client_message')
 def handle_client_message(data):
