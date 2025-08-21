@@ -92,7 +92,7 @@ function initApp() {
     // 标题：客户/客服
     const title = document.createElement('div');
     title.className = 'message-title';
-    title.textContent = sender === 'client' ? '客户' : '客服';
+    title.textContent = sender === 'client' ? 'je' : 'GameSawa service client';
 
     const body = document.createElement('div');
     body.className = 'message-body';
