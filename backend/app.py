@@ -1,3 +1,4 @@
+import re
 import os
 import logging
 from datetime import datetime
@@ -13,21 +14,59 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ============== 翻译封装 ==============
 translator_lock = threading.Lock()
 
-def translate_text(text, target="zh-CN", max_length=4000):
+def translate_text(text, target="zh-CN", source="auto", max_length=4500):
+    """
+    更稳的翻译：
+    - 按标点分句拼块，避免长句被截断
+    - 默认允许指定源语言（法语时建议 source='fr'）
+    - 若返回长度明显异常，自动换用指定源语重试
+    """
+    text = (text or "").strip()
     if not text:
         return text
+
     try:
-        with translator_lock:
-            # 分段翻译
-            if len(text) > max_length:
-                parts = [text[i:i+max_length] for i in range(0, len(text), max_length)]
-                translated = [
-                    GoogleTranslator(source="auto", target=target).translate(part)
-                    for part in parts
-                ]
-                return ''.join(translated)
+        # 1) 先按句号/问号/感叹号/逗号等分句
+        sentences = re.split(r'(?<=[\.\!\?。！？；;，,])\s+', text)
+        chunks = []
+        buf = ""
+
+        for sent in sentences:
+            if not sent:
+                continue
+            # 控制块大小，避免超过 google 接口解析阈值
+            if len(buf) + len(sent) + 1 > max_length:
+                chunks.append(buf)
+                buf = sent
             else:
-                return GoogleTranslator(source="auto", target=target).translate(text)
+                buf = (buf + " " + sent).strip() if buf else sent
+        if buf:
+            chunks.append(buf)
+
+        gt = GoogleTranslator(source=source, target=target)
+
+        # 2) 逐块翻译（优先 batch，失败再单块）
+        out = []
+        try:
+            out = gt.translate_batch(chunks)
+        except Exception:
+            # 某些版本/网络下 batch 可能失败，逐块兜底
+            out = [GoogleTranslator(source=source, target=target).translate(c) for c in chunks]
+
+        result = " ".join(out).strip()
+
+        # 3) 结果健康度检查：若明显偏短，自动重试（仅当 source='auto' 时）
+        # 经验阈值：< 原文长度的 55% 判为可疑
+        if source == "auto" and len(result) < max(12, int(len(text) * 0.55)):
+            try:
+                forced = GoogleTranslator(source="fr", target=target).translate(text)
+                if len(forced) > len(result) * 1.2:
+                    result = forced
+            except Exception:
+                pass
+
+        return result or text
+
     except Exception as e:
         logging.warning(f"[翻译失败] {e}")
         return text
@@ -77,17 +116,23 @@ def get_config():
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    msg = data.get('message', '')
-    # 直接用原文做机器人匹配（不翻译）
-    bot_reply = get_bot_reply(msg)
-    # 客服端显示中文（翻译机器人回复为中文）
-    reply_zh = GoogleTranslator(source='auto', target='zh-CN').translate(bot_reply)
-    # 客户端显示法语（翻译机器人回复为法语）
-    reply_fr = GoogleTranslator(source='auto', target='fr').translate(bot_reply)
+    msg_fr = data.get('message', '')
+
+    # 客户消息翻译成中文（客服端用）
+    msg_zh = GoogleTranslator(source='fr', target='zh-CN').translate(msg_fr)
+
+    # 用中文去匹配机器人逻辑（逻辑库应该是中文的）
+    bot_reply_zh = get_bot_reply(msg_zh)
+
+    # 翻译机器人回复成法语，给客户显示
+    bot_reply_fr = GoogleTranslator(source='zh-CN', target='fr').translate(bot_reply_zh)
+
     return jsonify({
-        'reply_fr': reply_fr,
-        'reply_zh': reply_zh
+        'msg_zh': msg_zh,             # 客户端发的消息（中文）
+        'reply_zh': bot_reply_zh,     # 机器人回复（中文）
+        'reply_fr': bot_reply_fr      # 机器人回复（法语）
     })
+
 
 # ============== WebSocket 事件 ==============
 @socketio.on('client_message')
@@ -103,8 +148,9 @@ def handle_client_message(data):
         return
 
     # 翻译客户消息
-    client_msg_zh = translate_text(msg, target="zh-CN")
-    client_msg_fr = translate_text(msg, target="fr")
+    bot_reply = get_bot_reply(msg)  # 原样匹配
+    bot_reply_zh = translate_text(bot_reply, target="zh-CN", source="fr")
+    bot_reply_fr = translate_text(bot_reply, target="fr",   source="fr")
 
     # 机器人逻辑
     bot_reply = get_bot_reply(msg)
@@ -113,12 +159,13 @@ def handle_client_message(data):
 
     emit('new_message', {
         "from": "client",
-        "original": msg,          # 客户发的原文（法语）
-        "client_zh": client_msg_zh,# 客户消息翻译成中文
-        "client_fr": client_msg_fr,# 客户消息翻译成法语（保持一致）
-        "bot_reply": bot_reply,   # 机器人原始回复
-        "reply_zh": bot_reply_zh, # 机器人中文
-        "reply_fr": bot_reply_fr  # 机器人法语
+        "original": msg,            # 法语原文（给客户界面右侧）
+        "client_zh": client_msg_zh, # ✅ 客服界面左侧 用这个
+        "client_fr": client_msg_fr,
+
+        "bot_reply": bot_reply,
+        "reply_zh": bot_reply_zh,   # 客服界面 机器人中文
+        "reply_fr": bot_reply_fr    # 客户界面 机器人法语
     }, broadcast=True)
 
 

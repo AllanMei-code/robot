@@ -32,14 +32,13 @@ function initApp() {
 
     if (agentMsgs) {
       if (data.from === 'client') {
-        // ✅ 客户发的显示中文（翻译过的）
+        // ✅ 客户发的 = 中文（翻译过的）
         addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left');
-        // ✅ 机器人回复显示中文
+
+        // 机器人回复 = 中文
         if (data.bot_reply) {
           addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right');
         }
-      } else if (data.from === 'agent') {
-        addMessage(agentMsgs, data.original || '', 'agent', 'right');
       }
     }
   });
