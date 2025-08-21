@@ -32,8 +32,9 @@ function initApp() {
 
     if (agentMsgs) {
       if (data.from === 'client') {
-        // 客服界面：客户发的显示中文，机器人回复显示中文
-        addMessage(agentMsgs, data.original || '', 'client', 'left');
+        // ✅ 客户发的显示中文（翻译过的）
+        addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left');
+        // ✅ 机器人回复显示中文
         if (data.bot_reply) {
           addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right');
         }
@@ -41,6 +42,7 @@ function initApp() {
         addMessage(agentMsgs, data.original || '', 'agent', 'right');
       }
     }
+
 
   });
 

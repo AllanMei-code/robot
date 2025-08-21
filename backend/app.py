@@ -102,18 +102,25 @@ def handle_client_message(data):
     if not msg:
         return
 
+    # 翻译客户消息
+    client_msg_zh = translate_text(msg, target="zh-CN")
+    client_msg_fr = translate_text(msg, target="fr")
+
     # 机器人逻辑
     bot_reply = get_bot_reply(msg)
-    translated_zh = translate_text(bot_reply, target="zh-CN")
-    translated_fr = translate_text(bot_reply, target="fr")
+    bot_reply_zh = translate_text(bot_reply, target="zh-CN")
+    bot_reply_fr = translate_text(bot_reply, target="fr")
 
     emit('new_message', {
         "from": "client",
-        "original": msg,          # 客户自己发的原文
+        "original": msg,          # 客户发的原文（法语）
+        "client_zh": client_msg_zh,# 客户消息翻译成中文
+        "client_fr": client_msg_fr,# 客户消息翻译成法语（保持一致）
         "bot_reply": bot_reply,   # 机器人原始回复
-        "reply_zh": translated_zh,# 机器人中文
-        "reply_fr": translated_fr # 机器人法语
+        "reply_zh": bot_reply_zh, # 机器人中文
+        "reply_fr": bot_reply_fr  # 机器人法语
     }, broadcast=True)
+
 
 
 @socketio.on('agent_message')
