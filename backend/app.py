@@ -147,25 +147,26 @@ def handle_client_message(data):
     if not msg:
         return
 
-    # 翻译客户消息
-    bot_reply = get_bot_reply(msg)  # 原样匹配
-    bot_reply_zh = translate_text(bot_reply, target="zh-CN", source="fr")
-    bot_reply_fr = translate_text(bot_reply, target="fr",   source="fr")
+    # 1) 客户消息翻译
+    client_msg_zh = translate_text(msg, target="zh-CN", source="fr")   # 法语 -> 中文
+    client_msg_fr = msg  # 原文就是法语
 
-    # 机器人逻辑
-    bot_reply = get_bot_reply(msg)
-    bot_reply_zh = translate_text(bot_reply, target="zh-CN")
-    bot_reply_fr = translate_text(bot_reply, target="fr")
+    # 2) 机器人逻辑（用中文消息匹配）
+    bot_reply_zh = get_bot_reply(client_msg_zh)
 
+    # 3) 翻译机器人回复 -> 法语
+    bot_reply_fr = translate_text(bot_reply_zh, target="fr", source="zh-CN")
+
+    # 4) 广播
     emit('new_message', {
         "from": "client",
-        "original": msg,            # 法语原文（给客户界面右侧）
-        "client_zh": client_msg_zh, # ✅ 客服界面左侧 用这个
-        "client_fr": client_msg_fr,
+        "original": msg,            # 客户发的法语
+        "client_zh": client_msg_zh, # 客服界面显示
+        "client_fr": client_msg_fr, # 客户界面显示
 
-        "bot_reply": bot_reply,
-        "reply_zh": bot_reply_zh,   # 客服界面 机器人中文
-        "reply_fr": bot_reply_fr    # 客户界面 机器人法语
+        "bot_reply": bot_reply_zh,  # 原始中文回复
+        "reply_zh": bot_reply_zh,   # 客服界面机器人中文
+        "reply_fr": bot_reply_fr    # 客户界面机器人法语
     }, broadcast=True)
 
 
