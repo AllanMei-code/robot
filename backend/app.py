@@ -92,7 +92,6 @@ def chat():
 # ============== WebSocket 事件 ==============
 @socketio.on('client_message')
 def handle_client_message(data):
-    """客户发消息"""
     msg = (data or {}).get('message', '').strip()
     image = (data or {}).get('image')
 
@@ -103,20 +102,19 @@ def handle_client_message(data):
     if not msg:
         return
 
-    # 机器人逻辑用原文做匹配
+    # 机器人逻辑
     bot_reply = get_bot_reply(msg)
-    # 翻译机器人回复为中文
     translated_zh = translate_text(bot_reply, target="zh-CN")
-    # 翻译机器人回复为法语
     translated_fr = translate_text(bot_reply, target="fr")
 
     emit('new_message', {
         "from": "client",
-        "original": msg,
-        "bot_reply": bot_reply,
-        "reply_zh": translated_zh,
-        "reply_fr": translated_fr
+        "original": msg,          # 客户自己发的原文
+        "bot_reply": bot_reply,   # 机器人原始回复
+        "reply_zh": translated_zh,# 机器人中文
+        "reply_fr": translated_fr # 机器人法语
     }, broadcast=True)
+
 
 @socketio.on('agent_message')
 def handle_agent_message(data):

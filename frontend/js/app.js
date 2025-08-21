@@ -18,23 +18,30 @@ function initApp() {
     }
 
     // 文本：根据当前面板决定显示 original 还是 translated
-    if (clientMsgs) {
-      // 客户页面：自己发的看 original（右），客服来的看 translated（左）
+        if (clientMsgs) {
       if (data.from === 'client') {
+        // 客户端界面：自己发的用原文，机器人的回复用法语
         addMessage(clientMsgs, data.original || '', 'client', 'right');
+        if (data.bot_reply) {
+          addMessage(clientMsgs, data.reply_fr || data.bot_reply, 'agent', 'left');
+        }
       } else if (data.from === 'agent') {
         addMessage(clientMsgs, data.translated || data.original || '', 'agent', 'left');
       }
     }
 
     if (agentMsgs) {
-      // 客服页面：客户来的看 translated（左，中文），自己发的看 original（右，中文）
       if (data.from === 'client') {
-        addMessage(agentMsgs, data.translated || data.original || '', 'client', 'left');
+        // 客服界面：客户发的显示中文，机器人回复显示中文
+        addMessage(agentMsgs, data.original || '', 'client', 'left');
+        if (data.bot_reply) {
+          addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right');
+        }
       } else if (data.from === 'agent') {
         addMessage(agentMsgs, data.original || '', 'agent', 'right');
       }
     }
+
   });
 
   // ===== 发送文本（不本地渲染，等服务器广播） =====
