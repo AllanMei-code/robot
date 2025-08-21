@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from deep_translator import GoogleTranslator
 import threading
+from logic import get_bot_reply
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -54,6 +55,7 @@ class ConfigStore:
         }
 config_store = ConfigStore()
 
+
 # ============== REST API ==============
 @app.route('/api/v1/config', methods=['GET'])
 def get_config():
@@ -77,13 +79,18 @@ def handle_client_message(data):
     if not msg:
         return
 
+    # 翻译为中文
     translated_zh = translate_text(msg, target="zh-CN") \
         if config_store.config["TRANSLATION_ENABLED"] else msg
+
+    # 调用机器人逻辑
+    bot_reply = get_bot_reply(translated_zh)
 
     emit('new_message', {
         "from": "client",
         "original": msg,
-        "translated": translated_zh
+        "translated": translated_zh,
+        "bot_reply": bot_reply
     }, broadcast=True)
 
 @socketio.on('agent_message')
@@ -110,6 +117,7 @@ def handle_agent_message(data):
     }, broadcast=True)
 
 # ============== 前端静态文件 ==============
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
@@ -118,6 +126,7 @@ def serve_frontend(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 # ============== 启动 ==============
+
 if __name__ == "__main__" and os.getenv("FLASK_ENV") != "production":
     # ✅ gevent 启动方式
     from gevent import pywsgi
