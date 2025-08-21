@@ -103,18 +103,19 @@ def handle_client_message(data):
     if not msg:
         return
 
-    # 翻译为中文
-    translated_zh = translate_text(msg, target="zh-CN") \
-        if config_store.config["TRANSLATION_ENABLED"] else msg
-
-    # 调用机器人逻辑
-    bot_reply = get_bot_reply(translated_zh)
+    # 机器人逻辑用原文做匹配
+    bot_reply = get_bot_reply(msg)
+    # 翻译机器人回复为中文
+    translated_zh = translate_text(bot_reply, target="zh-CN")
+    # 翻译机器人回复为法语
+    translated_fr = translate_text(bot_reply, target="fr")
 
     emit('new_message', {
         "from": "client",
         "original": msg,
-        "translated": translated_zh,
-        "bot_reply": bot_reply
+        "bot_reply": bot_reply,
+        "reply_zh": translated_zh,
+        "reply_fr": translated_fr
     }, broadcast=True)
 
 @socketio.on('agent_message')
