@@ -13,12 +13,21 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ============== 翻译封装 ==============
 translator_lock = threading.Lock()
 
-def translate_text(text, target="zh-CN"):
+def translate_text(text, target="zh-CN", max_length=4000):
     if not text:
         return text
     try:
         with translator_lock:
-            return GoogleTranslator(source="auto", target=target).translate(text)
+            # 分段翻译
+            if len(text) > max_length:
+                parts = [text[i:i+max_length] for i in range(0, len(text), max_length)]
+                translated = [
+                    GoogleTranslator(source="auto", target=target).translate(part)
+                    for part in parts
+                ]
+                return ''.join(translated)
+            else:
+                return GoogleTranslator(source="auto", target=target).translate(text)
     except Exception as e:
         logging.warning(f"[翻译失败] {e}")
         return text
