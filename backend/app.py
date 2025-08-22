@@ -78,14 +78,11 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "frontend"),
     static_url_path=""
 )
-CORS(app, resources={r"/*": {"origins": [
-    "http://localhost:3000",
-    "http://3.71.28.18:3000"
-]}})
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": ["http://3.71.28.18:3000"]}})
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins=["http://localhost:3000", "http://3.71.28.18:3000"],
+    cors_allowed_origins=["http://3.71.28.18:3000"],
     async_mode="gevent",              # ✅ 用 gevent 模式
     max_http_buffer_size=20 * 1024 * 1024
 )
