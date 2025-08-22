@@ -155,12 +155,12 @@ def handle_agent_message(data):
     translated_client = translate_text(msg, target=target_lang) \
         if config_store.config["TRANSLATION_ENABLED"] else msg
 
-    emit('new_message', {
-        "from": "agent",
-        "original": msg,
-        "translated": translated_client,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }, broadcast=True)
+emit('new_message', {
+    "from": "agent",
+    "original": msg,
+    "translated": translated_client,
+    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
+}, broadcast=True, include_self=False)  # 👈 不回发给自己
 
 # ============== 前端静态文件 ==============
 @app.route('/', defaults={'path': ''})
