@@ -9,6 +9,7 @@ from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
 
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ============== 翻译封装 ==============
@@ -77,10 +78,10 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "frontend"),
     static_url_path=""
 )
-CORS(app, supports_credentials=True, origins=[
+CORS(app, resources={r"/*": {"origins": [
     "http://localhost:3000",
     "http://3.71.28.18:3000"
-])
+]}})
 
 socketio = SocketIO(
     app,
@@ -166,7 +167,8 @@ def handle_client_message(data):
 
         "bot_reply": bot_reply_zh,  # 原始中文回复
         "reply_zh": bot_reply_zh,   # 客服界面机器人中文
-        "reply_fr": bot_reply_fr    # 客户界面机器人法语
+        "reply_fr": bot_reply_fr,   # 客户界面机器人法语
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
     }, broadcast=True)
 
 
@@ -191,7 +193,8 @@ def handle_agent_message(data):
     emit('new_message', {
         "from": "agent",
         "original": msg,
-        "translated": translated_client
+        "translated": translated_client,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
     }, broadcast=True)
 
 # ============== 前端静态文件 ==============

@@ -32,13 +32,16 @@ function initApp() {
 
     if (agentMsgs) {
       if (data.from === 'client') {
-        // ✅ 客户发的 = 中文（翻译过的）
-        addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left');
+        // 客户发的 = 中文
+        addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, data.timestamp);
 
         // 机器人回复 = 中文
         if (data.bot_reply) {
-          addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right');
+          addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, data.timestamp);
         }
+      } else if (data.from === 'agent') {
+        // ✅ 客服自己发的消息（显示原文）
+        addMessage(agentMsgs, data.original || '', 'agent', 'right', false, data.timestamp);
       }
     }
   });
@@ -87,7 +90,7 @@ function initApp() {
   });
 
   // ===== UI 渲染 =====
-  function addMessage(container, content, sender, align, isHTML = false) {
+    function addMessage(container, content, sender, align, isHTML = false, timestamp = null) {
     if (!container) return;
     const wrap = document.createElement('div');
     wrap.className = `message-wrapper ${align}`;
@@ -102,15 +105,21 @@ function initApp() {
 
     const body = document.createElement('div');
     body.className = 'message-body';
-
     if (isHTML) {
-      body.innerHTML = content;      // 用于 <img>，注意不要把任意不可信 HTML 放进来
+      body.innerHTML = content;
     } else {
       body.textContent = content ?? '';
     }
 
+    // 时间
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'message-time';
+    const now = timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
+    timeDiv.textContent = now;
+
     bubble.appendChild(title);
     bubble.appendChild(body);
+    bubble.appendChild(timeDiv);
     wrap.appendChild(bubble);
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
