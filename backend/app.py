@@ -135,32 +135,35 @@ def handle_client_message(data):
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
     }, broadcast=True)
 
-@socketio.on('agent_message')
+@socketio.on("agent_message")
 def handle_agent_message(data):
-    msg = (data or {}).get('message', '').strip()
-    image = (data or {}).get('image')
-    target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
+    msg = data.get("message")
+    target_lang = data.get("target_lang", "fr")
+    image = data.get("image")
+
+    payload = {
+        "from": "agent",
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+
+    if msg:
+        # 翻译客服消息（中文 → 法语）
+        try:
+            translated = translator.translate(msg, dest=target_lang).text
+        except Exception:
+            translated = msg
+
+        payload.update({
+            "original": msg,        # 原始中文（给客服）
+            "translated": translated  # 翻译后的（给客户）
+        })
 
     if image:
-        emit('new_message', {
-            "from": "agent",
-            "image": image,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }, broadcast=True)
-        return
+        payload.update({"image": image})
 
-    if not msg:
-        return
+    # 🚀 广播给所有连接的客户端
+    emit("new_message", payload, broadcast=True)
 
-    translated_client = translate_text(msg, target=target_lang) \
-        if config_store.config["TRANSLATION_ENABLED"] else msg
-
-    emit('new_message', {
-        "from": "agent",
-        "original": msg,
-        "translated": translated_client,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }, broadcast=True, include_self=False)  # 👈 不回发给自己
 
 # ============== 前端静态文件 ==============
 @app.route('/', defaults={'path': ''})
