@@ -8,37 +8,45 @@ from flask_socketio import SocketIO, emit
 from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
-from transformers import pipeline
+from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+import requests, logging
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 初始化 HuggingFace 翻译模型
-translator_fr2zh = pipeline("translation", model="Helsinki-NLP/opus-mt-fr-zh")
-translator_zh2fr = pipeline("translation", model="Helsinki-NLP/opus-mt-zh-fr")
+# ========== 初始化 Hugging Face 模型 ==========
+model_m2m = M2M100ForConditionalGeneration.from_pretrained("facebook/m2m100_418M")
+tokenizer_m2m = M2M100Tokenizer.from_pretrained("facebook/m2m100_418M")
 
-def hybrid_translate(text, target="zh-CN", source="fr"):
-    """
-    混合翻译：优先 LibreTranslate，失败则退回 HuggingFace
-    """
+def huggingface_translate(text, source_lang, target_lang):
+    """使用 HuggingFace M2M100 翻译"""
+    tokenizer_m2m.src_lang = source_lang
+    encoded = tokenizer_m2m(text, return_tensors="pt")
+    generated = model_m2m.generate(
+        **encoded,
+        forced_bos_token_id=tokenizer_m2m.get_lang_id(target_lang)
+    )
+    return tokenizer_m2m.batch_decode(generated, skip_special_tokens=True)[0]
+
+
+def hybrid_translate(text, source="fr", target="zh"):
+    """Hybrid 混合策略: 先 LibreTranslate, 再 HuggingFace"""
+    # 1. 优先尝试 LibreTranslate
     try:
-        # === 先尝试 LibreTranslate ===
-        payload = {"q": text, "source": source, "target": target, "format": "text"}
-        resp = requests.post("https://libretranslate.de/translate", json=payload, timeout=5)
+        resp = requests.post("https://libretranslate.de/translate", json={
+            "q": text,
+            "source": source,
+            "target": target,
+            "format": "text"
+        }, timeout=5)
         if resp.ok:
-            result = resp.json()["translatedText"]
-            if result.strip():
+            result = resp.json().get("translatedText", "").strip()
+            if result:
                 return result
     except Exception as e:
-        logging.warning(f"LibreTranslate 失败，切换 HuggingFace: {e}")
+        logging.warning(f"LibreTranslate failed, fallback to HF: {e}")
 
-    # === 兜底：HuggingFace 本地模型 ===
-    if source.startswith("fr") and target.startswith("zh"):
-        return translator_fr2zh(text)[0]['translation_text']
-    elif source.startswith("zh") and target.startswith("fr"):
-        return translator_zh2fr(text)[0]['translation_text']
-    else:
-        # 其他语言对可以按需扩展
-        return text
+    # 2. 兜底使用 HuggingFace M2M100
+    return huggingface_translate(text, source, target)
 
 # ============== 翻译封装 ==============
 translator_lock = threading.Lock()
@@ -118,28 +126,21 @@ def get_config():
         "timestamp": datetime.now().isoformat()
     })
 
-@app.route('/chat', methods=['POST'])
+@app.route("/chat", methods=["POST"])
 def chat():
-    data = request.json
-    msg_fr = data.get('message', '').strip()
+    data = request.get_json()
+    user_msg = data.get("message", "")
 
-    # 1. 翻译用户消息成中文（Hybrid）
-    msg_zh = hybrid_translate(msg_fr, target="zh", source="fr")
+    # 翻译 (法语 -> 中文)
+    translated_text = hybrid_translate(user_msg, source="fr", target="zh")
 
-    # 2. 答题库匹配
-    bot_reply_zh = get_bot_reply(msg_zh)
-
-    # 3. 没命中答题库 → 用用户翻译的中文直接返回
-    if not bot_reply_zh or "抱歉" in bot_reply_zh:
-        bot_reply_zh = msg_zh
-
-    # 4. 翻译回法语（Hybrid）
-    bot_reply_fr = hybrid_translate(bot_reply_zh, target="fr", source="zh")
+    # 如果有机器人逻辑就调用，否则直接返回翻译
+    # bot_reply = get_bot_reply(translated_text)   # 如果有 logic.py
+    bot_reply = translated_text  # 没有逻辑库就直接返回翻译
 
     return jsonify({
-        'msg_zh': msg_zh,
-        'reply_zh': bot_reply_zh,
-        'reply_fr': bot_reply_fr
+        "user_msg": user_msg,
+        "reply": bot_reply
     })
 
 # ============== WebSocket 事件 ==============
