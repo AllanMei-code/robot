@@ -8,8 +8,37 @@ from flask_socketio import SocketIO, emit
 from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
+from transformers import pipeline
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 初始化 HuggingFace 翻译模型
+translator_fr2zh = pipeline("translation", model="Helsinki-NLP/opus-mt-fr-zh")
+translator_zh2fr = pipeline("translation", model="Helsinki-NLP/opus-mt-zh-fr")
+
+def hybrid_translate(text, target="zh-CN", source="fr"):
+    """
+    混合翻译：优先 LibreTranslate，失败则退回 HuggingFace
+    """
+    try:
+        # === 先尝试 LibreTranslate ===
+        payload = {"q": text, "source": source, "target": target, "format": "text"}
+        resp = requests.post("https://libretranslate.de/translate", json=payload, timeout=5)
+        if resp.ok:
+            result = resp.json()["translatedText"]
+            if result.strip():
+                return result
+    except Exception as e:
+        logging.warning(f"LibreTranslate 失败，切换 HuggingFace: {e}")
+
+    # === 兜底：HuggingFace 本地模型 ===
+    if source.startswith("fr") and target.startswith("zh"):
+        return translator_fr2zh(text)[0]['translation_text']
+    elif source.startswith("zh") and target.startswith("fr"):
+        return translator_zh2fr(text)[0]['translation_text']
+    else:
+        # 其他语言对可以按需扩展
+        return text
 
 # ============== 翻译封装 ==============
 translator_lock = threading.Lock()
@@ -92,10 +121,21 @@ def get_config():
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    msg_fr = data.get('message', '')
-    msg_zh = GoogleTranslator(source='fr', target='zh-CN').translate(msg_fr)
+    msg_fr = data.get('message', '').strip()
+
+    # 1. 翻译用户消息成中文（Hybrid）
+    msg_zh = hybrid_translate(msg_fr, target="zh", source="fr")
+
+    # 2. 答题库匹配
     bot_reply_zh = get_bot_reply(msg_zh)
-    bot_reply_fr = GoogleTranslator(source='zh-CN', target='fr').translate(bot_reply_zh)
+
+    # 3. 没命中答题库 → 用用户翻译的中文直接返回
+    if not bot_reply_zh or "抱歉" in bot_reply_zh:
+        bot_reply_zh = msg_zh
+
+    # 4. 翻译回法语（Hybrid）
+    bot_reply_fr = hybrid_translate(bot_reply_zh, target="fr", source="zh")
+
     return jsonify({
         'msg_zh': msg_zh,
         'reply_zh': bot_reply_zh,
@@ -105,35 +145,28 @@ def chat():
 # ============== WebSocket 事件 ==============
 @socketio.on('client_message')
 def handle_client_message(data):
-    msg = (data or {}).get('message', '').strip()
-    image = (data or {}).get('image')
+    msg_fr = data.get('message', '').strip()
 
-    if image:
-        emit('new_message', {
-            "from": "client",
-            "image": image,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }, broadcast=True)
-        return
+    # 1. 翻译用户消息成中文（Hybrid）
+    msg_zh = hybrid_translate(msg_fr, target="zh", source="fr")
 
-    if not msg:
-        return
+    # 2. 答题库匹配
+    bot_reply_zh = get_bot_reply(msg_zh)
 
-    client_msg_zh = translate_text(msg, target="zh-CN", source="fr")
-    client_msg_fr = msg
-    bot_reply_zh = get_bot_reply(client_msg_zh)
-    bot_reply_fr = translate_text(bot_reply_zh, target="fr", source="zh-CN")
+    # 3. 没命中 → 用户翻译文本
+    if not bot_reply_zh or "抱歉" in bot_reply_zh:
+        bot_reply_zh = msg_zh
 
-    emit('new_message', {
-        "from": "client",
-        "original": msg,
-        "client_zh": client_msg_zh,
-        "client_fr": client_msg_fr,
-        "bot_reply": bot_reply_zh,
-        "reply_zh": bot_reply_zh,
-        "reply_fr": bot_reply_fr,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-    }, broadcast=True)
+    # 4. 翻译回法语（Hybrid）
+    bot_reply_fr = hybrid_translate(bot_reply_zh, target="fr", source="zh")
+
+    # 发送给前端
+    emit('server_message', {
+        'msg_zh': msg_zh,
+        'reply_zh': bot_reply_zh,
+        'reply_fr': bot_reply_fr
+    })
+
 
 @socketio.on('agent_message')
 def handle_agent_message(data):
