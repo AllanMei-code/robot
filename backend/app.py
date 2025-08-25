@@ -137,29 +137,28 @@ def handle_client_message(data):
 
 @socketio.on('agent_message')
 def handle_agent_message(data):
-    """客服发消息 -> 翻译给客户，并且不回发给自己"""
     msg = (data or {}).get('message', '').strip()
     image = (data or {}).get('image')
     target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # 图片直接广播
+    # 客服自己的 sid
+    sid = request.sid  
+
     if image:
         socketio.emit('new_message', {
             "from": "agent",
             "image": image,
             "timestamp": ts
-        }, broadcast=True, include_self=False)   # 关键：不回发给自己
+        }, skip_sid=sid)   # 不发给自己
         return
 
     if not msg:
         return
 
-    # 翻译客服消息（中文 -> 客户语言，默认 fr）
     translated = translate_text(msg, target=target_lang, source="auto") \
         if config_store.config["TRANSLATION_ENABLED"] else msg
 
-    # 统一字段名：客户界面用 translated，客服界面用 original
     payload = {
         "from": "agent",
         "original": msg,
@@ -167,7 +166,8 @@ def handle_agent_message(data):
         "timestamp": ts
     }
 
-    socketio.emit('new_message', payload, broadcast=True, include_self=False)  # 关键：不回发给自己
+    socketio.emit('new_message', payload, skip_sid=sid)  # 不发给自己
+
 
 
 
