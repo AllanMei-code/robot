@@ -70,19 +70,20 @@ document.getElementById('agent-send')?.addEventListener('click', () => {
   const msg = agentInput.value.trim();
   if (!msg) return;
 
-  // 本地立刻显示
+  // 本地立刻显示一条（只在客服界面）
   if (agentMsgs) {
-    addMessage(agentMsgs, msg, 'agent', 'right', false, 
-      new Date().toISOString().replace("T", " ").substring(0, 16));
+    const ts = new Date().toISOString().replace("T", " ").substring(0, 16);
+    addMessage(agentMsgs, msg, 'agent', 'right', false, ts);
   }
 
+  // 发给后端，后端会翻译并广播给“客户界面”，但不会回发给自己（include_self=false）
   socket.emit('agent_message', { 
     message: msg,
     target_lang: window.AppConfig?.DEFAULT_CLIENT_LANG || 'fr'
   });
+
   agentInput.value = '';
 });
-agentInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('agent-send').click());
 
 
   // ===== 客户端上传图片 =====

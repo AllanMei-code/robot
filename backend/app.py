@@ -135,34 +135,40 @@ def handle_client_message(data):
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
     }, broadcast=True)
 
-@socketio.on("agent_message")
+@socketio.on('agent_message')
 def handle_agent_message(data):
-    msg = data.get("message")
-    target_lang = data.get("target_lang", "fr")
-    image = data.get("image")
+    """客服发消息 -> 翻译给客户，并且不回发给自己"""
+    msg = (data or {}).get('message', '').strip()
+    image = (data or {}).get('image')
+    target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    # 图片直接广播
+    if image:
+        socketio.emit('new_message', {
+            "from": "agent",
+            "image": image,
+            "timestamp": ts
+        }, broadcast=True, include_self=False)   # 关键：不回发给自己
+        return
+
+    if not msg:
+        return
+
+    # 翻译客服消息（中文 -> 客户语言，默认 fr）
+    translated = translate_text(msg, target=target_lang, source="auto") \
+        if config_store.config["TRANSLATION_ENABLED"] else msg
+
+    # 统一字段名：客户界面用 translated，客服界面用 original
     payload = {
         "from": "agent",
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
+        "original": msg,
+        "translated": translated,
+        "timestamp": ts
     }
 
-    if msg:
-        # 翻译客服消息（中文 → 法语）
-        try:
-            translated = translator.translate(msg, dest=target_lang).text
-        except Exception:
-            translated = msg
+    socketio.emit('new_message', payload, broadcast=True, include_self=False)  # 关键：不回发给自己
 
-        payload.update({
-            "original": msg,        # 原始中文（给客服）
-            "translated": translated  # 翻译后的（给客户）
-        })
-
-    if image:
-        payload.update({"image": image})
-
-    # 🚀 广播给所有连接的客户端
-    emit("new_message", payload, broadcast=True)
 
 
 # ============== 前端静态文件 ==============
