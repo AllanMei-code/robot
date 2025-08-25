@@ -50,31 +50,40 @@ function initApp() {
   });
 
   // ===== 客户端发送文本 =====
-  document.getElementById('client-send')?.addEventListener('click', () => {
-    const msg = clientInput.value.trim();
-    if (!msg) return;
-    socket.emit('client_message', { message: msg });
-    clientInput.value = '';
+document.getElementById('client-send')?.addEventListener('click', () => {
+  const msg = clientInput.value.trim();
+  if (!msg) return;
+
+  // 本地立刻显示
+  if (clientMsgs) {
+    addMessage(clientMsgs, msg, 'client', 'right', false, 
+      new Date().toISOString().replace("T", " ").substring(0, 16));
+  }
+
+  socket.emit('client_message', { message: msg });
+  clientInput.value = '';
+});
+clientInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('client-send').click());
+
+// ===== 客服端发送文本 =====
+document.getElementById('agent-send')?.addEventListener('click', () => {
+  const msg = agentInput.value.trim();
+  if (!msg) return;
+
+  // 本地立刻显示
+  if (agentMsgs) {
+    addMessage(agentMsgs, msg, 'agent', 'right', false, 
+      new Date().toISOString().replace("T", " ").substring(0, 16));
+  }
+
+  socket.emit('agent_message', { 
+    message: msg,
+    target_lang: window.AppConfig?.DEFAULT_CLIENT_LANG || 'fr'
   });
-  clientInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('client-send').click());
+  agentInput.value = '';
+});
+agentInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('agent-send').click());
 
-  // ===== 客服端发送文本 =====
-  document.getElementById('agent-send')?.addEventListener('click', () => {
-    const msg = agentInput.value.trim();
-    if (!msg) return;
-
-    // ✅ 本地立刻显示一条（避免等待服务器再显示）
-    if (agentMsgs) {
-      addMessage(agentMsgs, msg, 'agent', 'right', false);
-    }
-
-    socket.emit('agent_message', { 
-      message: msg,
-      target_lang: window.AppConfig?.DEFAULT_CLIENT_LANG || 'fr'
-    });
-    agentInput.value = '';
-  });
-  agentInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('agent-send').click());
 
   // ===== 客户端上传图片 =====
   document.getElementById('client-file')?.addEventListener('change', (e) => {
