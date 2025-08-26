@@ -144,6 +144,7 @@ def chat():
     })
 
 # ============== WebSocket 事件 ==============
+    #============== 客户端消息 ==============
 @socketio.on('client_message')
 def handle_client_message(data):
     msg_fr = data.get('message', '').strip()
