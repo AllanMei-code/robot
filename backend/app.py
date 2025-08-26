@@ -207,10 +207,6 @@ def handle_agent_message(data):
 
     socketio.emit('new_message', payload, skip_sid=sid)
 
-
-
-
-
 # ============== 前端静态文件 ==============
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
