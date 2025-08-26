@@ -174,8 +174,7 @@ def handle_client_message(data):
 
     socketio.emit('new_message', payload)
 
-
-
+#============= 客服端消息 ==============
 @socketio.on('agent_message')
 def handle_agent_message(data):
     msg = (data or {}).get('message', '').strip()
