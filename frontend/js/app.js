@@ -5,10 +5,7 @@ function initApp() {
   // 可以根据 URL 或者页面元素来区分，这里假设通过 body 的 data-role 属性区分
   const role = document.body.dataset.role || "client";
 
-  const socket = io("http://3.71.28.18:5000", { 
-    transports: ['websocket'],
-    query: { role }   // ✅ 告诉后端是客户端还是客服端
-  });
+  const socket = io("http://3.71.28.18:5000", { transports: ['websocket'], query: { role } });
 
   const clientInput = document.getElementById('client-input');
   const agentInput  = document.getElementById('agent-input');
@@ -73,17 +70,17 @@ document.getElementById('client-send')?.addEventListener('click', () => {
 clientInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('client-send').click());
 
 // ===== 客服端发送文本 =====
+// 客服端发送
 document.getElementById('agent-send')?.addEventListener('click', () => {
   const msg = agentInput.value.trim();
   if (!msg) return;
 
-  // 本地立刻显示一条（只在客服界面）
-//  if (agentMsgs) {
-//    const ts = new Date().toISOString().replace("T", " ").substring(0, 16);
-//    addMessage(agentMsgs, msg, 'agent', 'right', false, ts);
-//  }
+  const ts = new Date().toISOString().replace("T", " ").substring(0, 16);
 
-  // 发给后端，后端会翻译并广播给“客户界面”，但不会回发给自己（include_self=false）
+  // 本地立即显示（右边），标记 pending
+  addMessage(agentMsgs, msg, 'agent', 'right', false, ts, { pending: true });
+
+  // 发给后端
   socket.emit('agent_message', { 
     message: msg,
     target_lang: window.AppConfig?.DEFAULT_CLIENT_LANG || 'fr'
@@ -91,6 +88,7 @@ document.getElementById('agent-send')?.addEventListener('click', () => {
 
   agentInput.value = '';
 });
+
 
 
   // ===== 客户端上传图片 =====
