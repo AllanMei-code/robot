@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO,emit
-from flask_socketio import join_roomemit
+from flask_socketio import join_room
 from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
