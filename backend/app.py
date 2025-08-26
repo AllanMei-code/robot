@@ -147,9 +147,10 @@ def chat():
 @socketio.on('client_message')
 def handle_client_message(data):
     msg_fr = data.get('message', '').strip()
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # 1. 翻译用户消息成中文（Hybrid）
-    msg_zh = hybrid_translate(msg_fr, target="zh", source="fr")
+    # 1. 翻译用户消息成中文
+    msg_zh = hybrid_translate(msg_fr, source="fr", target="zh")
 
     # 2. 答题库匹配
     bot_reply_zh = get_bot_reply(msg_zh)
@@ -158,15 +159,21 @@ def handle_client_message(data):
     if not bot_reply_zh or "抱歉" in bot_reply_zh:
         bot_reply_zh = msg_zh
 
-    # 4. 翻译回法语（Hybrid）
-    bot_reply_fr = hybrid_translate(bot_reply_zh, target="fr", source="zh")
+    # 4. 翻译回法语
+    bot_reply_fr = hybrid_translate(bot_reply_zh, source="zh", target="fr")
 
-    # 发送给前端
-    emit('server_message', {
-        'msg_zh': msg_zh,
-        'reply_zh': bot_reply_zh,
-        'reply_fr': bot_reply_fr
-    })
+    payload = {
+        "from": "client",
+        "original": msg_fr,      # 客户端原始输入（法语）
+        "client_zh": msg_zh,     # 翻译成中文
+        "reply_zh": bot_reply_zh, # 机器人中文回复
+        "reply_fr": bot_reply_fr, # 机器人法语回复
+        "bot_reply": True,
+        "timestamp": ts
+    }
+
+    socketio.emit('new_message', payload)
+
 
 
 @socketio.on('agent_message')
@@ -175,8 +182,6 @@ def handle_agent_message(data):
     image = (data or {}).get('image')
     target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    # 客服自己的 sid
     sid = request.sid  
 
     if image:
@@ -184,7 +189,7 @@ def handle_agent_message(data):
             "from": "agent",
             "image": image,
             "timestamp": ts
-        }, skip_sid=sid)   # 不发给自己
+        }, skip_sid=sid)
         return
 
     if not msg:
@@ -195,12 +200,13 @@ def handle_agent_message(data):
 
     payload = {
         "from": "agent",
-        "original": msg,
-        "translated": translated,
+        "original": msg,        # 客服端原文（中文）
+        "translated": translated, # 翻译给客户的版本（法语）
         "timestamp": ts
     }
 
-    socketio.emit('new_message', payload, skip_sid=sid)  # 不发给自己
+    socketio.emit('new_message', payload, skip_sid=sid)
+
 
 
 
