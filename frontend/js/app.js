@@ -78,10 +78,10 @@ document.getElementById('agent-send')?.addEventListener('click', () => {
   if (!msg) return;
 
   // 本地立刻显示一条（只在客服界面）
-  if (agentMsgs) {
-    const ts = new Date().toISOString().replace("T", " ").substring(0, 16);
-    addMessage(agentMsgs, msg, 'agent', 'right', false, ts);
-  }
+//  if (agentMsgs) {
+//    const ts = new Date().toISOString().replace("T", " ").substring(0, 16);
+//    addMessage(agentMsgs, msg, 'agent', 'right', false, ts);
+//  }
 
   // 发给后端，后端会翻译并广播给“客户界面”，但不会回发给自己（include_self=false）
   socket.emit('agent_message', { 

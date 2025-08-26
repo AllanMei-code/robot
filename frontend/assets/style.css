@@ -136,3 +136,21 @@ input[type="file"]#agent-file {
   font-size: 20px;
   margin-right: 5px;
 }
+
+.send-btn {
+  background: #0084ff;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.send-btn:hover {
+  background: #006bbf;
+}
+.send-btn svg {
+  fill: white;
+}
