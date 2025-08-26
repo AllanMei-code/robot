@@ -4,7 +4,8 @@ import logging
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO,emit
+from flask_socketio import join_roomemit
 from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
@@ -145,51 +146,64 @@ def chat():
 
 # ============== WebSocket 事件 ==============
     #============== 客户端消息 ==============
+@socketio.on('connect')
+def handle_connect():
+    role = request.args.get("role", "client")  # 连接时传 ?role=agent 或 ?role=client
+    if role == "agent":
+        join_room("agents")
+        logging.info(f"客服端连接成功: {request.sid}")
+    else:
+        join_room("clients")
+        logging.info(f"客户端连接成功: {request.sid}")
+
+
 @socketio.on('client_message')
 def handle_client_message(data):
-    msg_fr = data.get('message', '').strip()
+    msg_fr = (data or {}).get('message', '').strip()
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    if not msg_fr:
+        return
 
     # 1. 翻译用户消息成中文
     msg_zh = hybrid_translate(msg_fr, source="fr", target="zh")
 
     # 2. 答题库匹配
-    bot_reply_zh = get_bot_reply(msg_zh)
+    bot_reply_zh = get_bot_reply(msg_zh) or msg_zh
 
-    # 3. 没命中 → 用户翻译文本
-    if not bot_reply_zh or "抱歉" in bot_reply_zh:
-        bot_reply_zh = msg_zh
-
-    # 4. 翻译回法语
+    # 3. 翻译回法语
     bot_reply_fr = hybrid_translate(bot_reply_zh, source="zh", target="fr")
 
     payload = {
         "from": "client",
-        "original": msg_fr,      # 客户端原始输入（法语）
-        "client_zh": msg_zh,     # 翻译成中文
-        "reply_zh": bot_reply_zh, # 机器人中文回复
-        "reply_fr": bot_reply_fr, # 机器人法语回复
-        "bot_reply": True,
+        "original": msg_fr,       # 客户端原始输入（法语）
+        "client_zh": msg_zh,      # 翻译成中文（客服端用）
+        "reply_zh": bot_reply_zh, # 机器人中文回复（客服端用）
+        "reply_fr": bot_reply_fr, # 机器人法语回复（客户端用）
         "timestamp": ts
     }
 
-    socketio.emit('new_message', payload)
+    # ✅ 发给客服端
+    socketio.emit('new_message', payload, room="agents")
+    # ✅ 同时发回客户端（带翻译的机器人回复）
+    socketio.emit('new_message', payload, room="clients")
 
-#============= 客服端消息 ==============
+
 @socketio.on('agent_message')
 def handle_agent_message(data):
     msg = (data or {}).get('message', '').strip()
     image = (data or {}).get('image')
     target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-    sid = request.sid  
 
     if image:
-        socketio.emit('new_message', {
+        payload = {
             "from": "agent",
             "image": image,
             "timestamp": ts
-        }, skip_sid=sid)
+        }
+        # ✅ 客服发图片 → 客户端收到
+        socketio.emit('new_message', payload, room="clients")
         return
 
     if not msg:
@@ -201,11 +215,12 @@ def handle_agent_message(data):
     payload = {
         "from": "agent",
         "original": msg,        # 客服端原文（中文）
-        "translated": translated, # 翻译给客户的版本（法语）
+        "translated": translated, # 客户端收到的翻译（法语）
         "timestamp": ts
     }
 
-    socketio.emit('new_message', payload, skip_sid=sid)
+    # ✅ 客服发消息 → 客户端收到翻译
+    socketio.emit('new_message', payload, room="clients")
 
 # ============== 前端静态文件 ==============
 @app.route('/', defaults={'path': ''})

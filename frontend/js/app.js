@@ -1,7 +1,14 @@
 document.addEventListener('configReady', initApp);
 
 function initApp() {
-  const socket = io("http://3.71.28.18:5000", { transports: ['websocket'] });
+  // 判断当前页面是客户端还是客服端
+  // 可以根据 URL 或者页面元素来区分，这里假设通过 body 的 data-role 属性区分
+  const role = document.body.dataset.role || "client";
+
+  const socket = io("http://3.71.28.18:5000", { 
+    transports: ['websocket'],
+    query: { role }   // ✅ 告诉后端是客户端还是客服端
+  });
 
   const clientInput = document.getElementById('client-input');
   const agentInput  = document.getElementById('agent-input');
