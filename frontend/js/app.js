@@ -38,17 +38,15 @@ function initApp() {
     }
 
     if (agentMsgs) {
+      if (data.from === 'agent') {
+        // ✅ 跳过自己发的消息（已经本地渲染过）
+        return;
+      }
       if (data.from === 'client') {
-        // 客户发的（左边，显示中文）
         addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, data.timestamp);
-
-        // 机器人回复（右边，显示中文）
         if (data.bot_reply) {
           addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, data.timestamp);
         }
-      } else if (data.from === 'agent') {
-        // 客服发的（右边，显示原文）
-        addMessage(agentMsgs, data.original || '', 'agent', 'right', false, data.timestamp);
       }
     }
   });
