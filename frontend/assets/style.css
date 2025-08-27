@@ -1,3 +1,4 @@
+/* ===== 基础布局 ===== */
 body {
   font-family: Arial, sans-serif;
   margin: 0;
@@ -26,16 +27,12 @@ body {
   background: #f9f9f9;
 }
 
-/* 输入区和 emoji 定位 */
+/* ===== 输入区与表情面板定位 ===== */
 .input-area {
   position: relative;
-}
-
-.emoji-panel {
-  position: absolute;
-  bottom: 40px;
-  left: 0;
-  margin-top: 5px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .input-area input {
@@ -45,60 +42,93 @@ body {
   border-radius: 4px;
 }
 
-/* 工具栏容器 */
-.toolbar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* 统一按钮尺寸 */
-.tool-btn,
-#client-send,
-#agent-send,
-label[for="client-file"],
-label[for="agent-file"] {
-  width: 36px;
-  height: 36px;
+/* 表情面板（默认隐藏，按钮点击后显示/隐藏） */
+.emoji-panel {
+  position: absolute;
+  bottom: 48px;
+  left: 0;
+  background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #fff;
+  padding: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  display: none;
+  z-index: 10;
+}
+.emoji-panel span {
+  cursor: pointer;
+  font-size: 20px;
+  margin: 4px;
+  display: inline-block;
+}
+
+/* ===== 三个图标统一外观与尺寸（📷 / 😊 / ✈️）===== */
+/* 容器：统一为 40×40，圆角、边框、悬停态 */
+.icon-btn,       /* 摄像头（label） */
+.emoji-btn,      /* 表情（button） */
+.send-btn {      /* 发送（button） */
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
   cursor: pointer;
   user-select: none;
-  font-size: 18px;
-  line-height: 1;
   padding: 0;
+  color: #374151;           /* currentColor：SVG/文本都能继承到颜色 */
 }
 
-/* 发送按钮主色 */
-.tool-btn.primary,
-#client-send.primary,
-#agent-send.primary {
+.icon-btn:hover,
+.emoji-btn:hover,
+.send-btn:hover {
+  background: #f3f4f6;
+}
+
+/* 文字符号（📷、😊）的大小 */
+.icon-btn,
+.emoji-btn {
+  font-size: 22px;          /* 统一字形大小 */
+  line-height: 1;
+}
+
+/* 飞机（SVG）的大小；也兼容以后相机用 SVG */
+.send-btn svg,
+.icon-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  /* 如果你的 <svg> 里没有写 fill="currentColor"，取消下一行注释即可强制走 currentColor */
+  /* fill: currentColor; */
+}
+
+/* 发送按钮主色（保持可见度与区分度） */
+.send-btn {
   background: #2563eb;
-  color: #fff;
   border-color: #2563eb;
+  color: #fff;              /* 让 SVG/文本跟随变白 */
+}
+.send-btn:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
-/* 隐藏原生 file input */
-input[type="file"]#client-file,
-input[type="file"]#agent-file {
+/* 隐藏原生 file input（点击 label 触发） */
+#client-file,
+#agent-file {
   display: none;
 }
 
-/* 消息样式 */
+/* ===== 消息样式 ===== */
 .message-wrapper {
   display: flex;
   margin: 8px 0;
 }
-.message-wrapper.left {
-  justify-content: flex-start;
-}
-.message-wrapper.right {
-  justify-content: flex-end;
-}
+.message-wrapper.left  { justify-content: flex-start; }
+.message-wrapper.right { justify-content: flex-end; }
 
 .message-content {
   max-width: 70%;
@@ -107,14 +137,8 @@ input[type="file"]#agent-file {
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
   word-wrap: break-word;
 }
-.message-content.client {
-  background: #e6f7ff;
-  color: #003a8c;
-}
-.message-content.agent {
-  background: #fff4e6;
-  color: #7a3d00;
-}
+.message-content.client { background: #e6f7ff; color: #003a8c; }
+.message-content.agent  { background: #fff4e6; color: #7a3d00; }
 
 .message-title {
   font-weight: 600;
@@ -128,29 +152,4 @@ input[type="file"]#agent-file {
   max-height: 240px;
   border-radius: 8px;
   display: block;
-}
-
-/* emoji 样式 */
-.emoji {
-  cursor: pointer;
-  font-size: 20px;
-  margin-right: 5px;
-}
-
-.send-btn {
-  background: #0084ff;
-  border: none;
-  padding: 8px;
-  border-radius: 50%;
-  cursor: pointer;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.send-btn:hover {
-  background: #006bbf;
-}
-.send-btn svg {
-  fill: white;
 }
