@@ -4,13 +4,13 @@ import logging
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO,emit
+from flask_socketio import SocketIO, emit
 from flask_socketio import join_room
 from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
 from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
-import requests, logging
+import requests
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -28,10 +28,8 @@ def huggingface_translate(text, source_lang, target_lang):
     )
     return tokenizer_m2m.batch_decode(generated, skip_special_tokens=True)[0]
 
-
 def hybrid_translate(text, source="fr", target="zh"):
     """Hybrid 混合策略: 先 LibreTranslate, 再 HuggingFace"""
-    # 1. 优先尝试 LibreTranslate
     try:
         resp = requests.post("https://libretranslate.de/translate", json={
             "q": text,
@@ -45,8 +43,6 @@ def hybrid_translate(text, source="fr", target="zh"):
                 return result
     except Exception as e:
         logging.warning(f"LibreTranslate failed, fallback to HF: {e}")
-
-    # 2. 兜底使用 HuggingFace M2M100
     return huggingface_translate(text, source, target)
 
 # ============== 翻译封装 ==============
@@ -118,6 +114,9 @@ class ConfigStore:
         }
 config_store = ConfigStore()
 
+# ============== 客服在线状态 ==============
+agent_online = False  # True=客服在线 → 机器人暂停；False=客服离线 → 机器人介入
+
 # ============== REST API ==============
 @app.route('/api/v1/config', methods=['GET'])
 def get_config():
@@ -131,64 +130,87 @@ def get_config():
 def chat():
     data = request.get_json()
     user_msg = data.get("message", "")
-
-    # 翻译 (法语 -> 中文)
     translated_text = hybrid_translate(user_msg, source="fr", target="zh")
-
-    # 如果有机器人逻辑就调用，否则直接返回翻译
-    # bot_reply = get_bot_reply(translated_text)   # 如果有 logic.py
-    bot_reply = translated_text  # 没有逻辑库就直接返回翻译
-
+    bot_reply = translated_text
     return jsonify({
         "user_msg": user_msg,
         "reply": bot_reply
     })
 
 # ============== WebSocket 事件 ==============
-    #============== 客户端消息 ==============
 @socketio.on('connect')
 def handle_connect():
+    global agent_online
     role = request.args.get("role", "client")  # 连接时传 ?role=agent 或 ?role=client
     if role == "agent":
         join_room("agents")
+        agent_online = True
         logging.info(f"客服端连接成功: {request.sid}")
+        socketio.emit('agent_status', 'online')
     else:
         join_room("clients")
         logging.info(f"客户端连接成功: {request.sid}")
 
+@socketio.on('disconnect')
+def handle_disconnect():
+    global agent_online
+    # 简化：若有多客服，请维护 set 保存 agent sids；这里直接标记离线
+    agent_online = False
+    socketio.emit('agent_status', 'offline')
+    logging.info(f"连接断开: {request.sid}，已将客服标记离线")
 
+# ===== 客户端消息 =====
 @socketio.on('client_message')
 def handle_client_message(data):
-    msg_fr = (data or {}).get('message', '').strip()
+    global agent_online
+
+    msg_fr = (data or {}).get('message', '')
+    image  = (data or {}).get('image')
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    # 处理客户端图片
+    if image:
+        payload_img = {
+            "from": "client",
+            "image": image,
+            "timestamp": ts
+        }
+        socketio.emit('new_message', payload_img, room="agents")
+        socketio.emit('new_message', payload_img, room="clients")
+        return
+
+    msg_fr = (msg_fr or "").strip()
     if not msg_fr:
         return
 
-    # 1. 翻译用户消息成中文
+    # 1) 翻译客户消息为中文（客服端看）
     msg_zh = hybrid_translate(msg_fr, source="fr", target="zh")
-
-    # 2. 答题库匹配
-    bot_reply_zh = get_bot_reply(msg_zh) or msg_zh
-
-    # 3. 翻译回法语
-    bot_reply_fr = hybrid_translate(bot_reply_zh, source="zh", target="fr")
 
     payload = {
         "from": "client",
-        "original": msg_fr,       # 客户端原始输入（法语）
-        "client_zh": msg_zh,      # 翻译成中文（客服端用）
-        "reply_zh": bot_reply_zh, # 机器人中文回复（客服端用）
-        "reply_fr": bot_reply_fr, # 机器人法语回复（客户端用）
+        "original": msg_fr,   # 客户端原始输入（法语）
+        "client_zh": msg_zh,  # 客服端显示中文
         "timestamp": ts
     }
 
-    # ✅ 发给客服端
+    # 2) 机器人逻辑：仅客服离线时介入
+    if not agent_online:
+        bot_reply_zh = get_bot_reply(msg_zh)
+        if not bot_reply_zh or "抱歉" in bot_reply_zh:
+            bot_reply_zh = msg_zh  # 保持你原来的兜底：不命中就回中文翻译文本
+
+        bot_reply_fr = hybrid_translate(bot_reply_zh, source="zh", target="fr")
+        payload.update({
+            "bot_reply": True,
+            "reply_zh": bot_reply_zh,  # 客服端显示机器人中文
+            "reply_fr": bot_reply_fr   # 客户端显示机器人法语
+        })
+
+    # 广播给客服端 & 客户端
     socketio.emit('new_message', payload, room="agents")
-    # ✅ 同时发回客户端（带翻译的机器人回复）
     socketio.emit('new_message', payload, room="clients")
 
-
+# ===== 客服端消息 =====
 @socketio.on('agent_message')
 def handle_agent_message(data):
     msg = (data or {}).get('message', '').strip()
@@ -202,7 +224,6 @@ def handle_agent_message(data):
             "image": image,
             "timestamp": ts
         }
-        # ✅ 客服发图片 → 客户端收到
         socketio.emit('new_message', payload, room="clients")
         return
 
@@ -214,12 +235,10 @@ def handle_agent_message(data):
 
     payload = {
         "from": "agent",
-        "original": msg,        # 客服端原文（中文）
-        "translated": translated, # 客户端收到的翻译（法语）
+        "original": msg,         # 客服端本地显示中文
+        "translated": translated, # 客户端显示翻译（法语）
         "timestamp": ts
     }
-
-    # ✅ 客服发消息 → 客户端收到翻译
     socketio.emit('new_message', payload, room="clients")
 
 # ============== 前端静态文件 ==============
