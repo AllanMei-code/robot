@@ -1,9 +1,26 @@
 # -*- coding: utf-8 -*-
+import re
 import os
 import sqlite3
 import threading
 import hashlib
 from datetime import datetime
+
+def _fts_make_query(text: str, max_terms: int = 8) -> str | None:
+    """
+    把原始文本转换为安全的 FTS5 MATCH 查询：
+    - 仅保留“单词字符”（支持 Unicode）
+    - 每个词用 "..." 包住
+    - 用 AND 连接，避免引号/斜杠等导致语法错误
+    """
+    text = (text or "").replace('"', " ")
+    terms = re.findall(r"\w+", text, flags=re.UNICODE)
+    terms = [t for t in terms if t.strip()]
+    if not terms:
+        return None
+    terms = terms[:max_terms]
+    return " AND ".join(f'"{t}"' for t in terms)
+
 
 _DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 _DB_PATH = os.path.join(_DB_DIR, "bot.db")
@@ -116,26 +133,47 @@ def upsert_qa(q_fr: str, q_zh: str, a_zh: str, source: str = "agent"):
         return kid
 
 def retrieve_best(query_fr: str = "", query_zh: str = "", k: int = 3):
+    """用 FTS5 检索最相关答案；失败则回退 LIKE。返回 dict 或 None"""
     conn = _connect()
-    def _search(q: str):
-        q = _norm(q)
-        if not q: return []
+
+    def _search_like(qraw: str):
+        pat = f"%{(qraw or '')[:50]}%"
+        sql = """
+        SELECT id, (COALESCE(q_fr,'') || ' ' || COALESCE(q_zh,'')) AS question_all,
+               a_zh AS answer_zh, 1.0 AS score
+          FROM knowledge
+         WHERE q_fr LIKE ? OR q_zh LIKE ?
+         LIMIT ?;
+        """
+        return conn.execute(sql, (pat, pat, k)).fetchall()
+
+    def _search_fts(qraw: str):
+        q = _fts_make_query(qraw)
+        if not q:
+            return []
         sql = """
         SELECT rowid AS id, question_all, answer_zh, bm25(knowledge_fts) AS score
           FROM knowledge_fts
          WHERE knowledge_fts MATCH ?
          ORDER BY score LIMIT ?;
         """
-        return conn.execute(sql, (q, k)).fetchall()
+        try:
+            return conn.execute(sql, (q, k)).fetchall()
+        except sqlite3.OperationalError:
+            # FTS 解析失败 -> 回退 LIKE，避免报错中断
+            return _search_like(qraw)
 
     with _lock:
-        rows = _search(query_fr) + _search(query_zh)
-        if not rows: return None
+        rows = _search_fts(query_fr) + _search_fts(query_zh)
+        if not rows:
+            return None
+
         cand = [{"id": r["id"], "answer_zh": r["answer_zh"], "score": r["score"]} for r in rows]
-        cand.sort(key=lambda x: x["score"])
+        cand.sort(key=lambda x: x["score"])   # bm25 越小越相关；LIKE 回退统一给 1.0
         best = cand[0]
+
         conn.execute("UPDATE knowledge SET hits=hits+1, updated_at=? WHERE id=?",
-                     (datetime.now().isoformat(timespec="seconds"), best["id"]))
+                     (datetime.now().isoformat(timespec='seconds'), best["id"]))
         conn.commit()
         return best
 
