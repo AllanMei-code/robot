@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import re
 import os
 import time
@@ -8,9 +9,11 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from deep_translator import GoogleTranslator
 import threading
-from logic import get_bot_reply
 from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 import requests
+
+# 你的业务逻辑（可空实现）
+from logic import get_bot_reply
 
 # 学习存储
 from bot_store import init_db, log_message, upsert_qa, retrieve_best
@@ -121,13 +124,15 @@ session_info = {}                         # sid -> {'role': 'agent'|'client', 'c
 manual_online_by_cid = {}                 # cid -> bool (True=人工上线/不介入; False=下线/介入)
 suppress_until_by_cid = {}                # cid -> epoch 秒（客服打字抑制到期时间）
 last_agent_activity_by_cid = {}           # cid -> epoch 秒（客服上次活动时间）
-last_client_by_cid = {}                   # cid -> {'fr','zh','ts'}
+last_client_by_cid = {}                   # cid -> {'fr','zh','ts'}  用于自动学习
+last_client_msg_ts_by_cid = {}            # cid -> 最近一条客户消息的 token (timestamp)
 
 def _cid_of_current():
     info = session_info.get(request.sid, {})
     return info.get('cid', 'default')
 
 def _manual_online(cid):
+    # 默认为 True（人工在线）
     return manual_online_by_cid.get(cid, True)
 
 def _set_manual_online(cid, online: bool):
@@ -135,10 +140,6 @@ def _set_manual_online(cid, online: bool):
 
 def _update_agent_activity(cid):
     last_agent_activity_by_cid[cid] = time.time()
-
-def _inactive_too_long(cid):
-    last = last_agent_activity_by_cid.get(cid, 0)
-    return (time.time() - last) > INACTIVITY_SEC
 
 def _typing_suppressed(cid):
     return time.time() < suppress_until_by_cid.get(cid, 0)
@@ -162,11 +163,11 @@ def handle_connect():
     cid  = request.args.get("cid", "default")
     session_info[request.sid] = {'role': role, 'cid': cid}
 
-    # 房间：cid（所有人） + 角色房间
+    # 加入“会话房间” & “角色房间”
     join_room(cid)
     if role == "agent":
         join_room(f"{cid}:agents")
-        _update_agent_activity(cid)  # 连接也算活动，避免刚连上就触发空闲兜底
+        _update_agent_activity(cid)  # 连接也算一次活动
     else:
         join_room(f"{cid}:clients")
 
@@ -194,6 +195,57 @@ def handle_agent_typing(_data=None):
     suppress_until_by_cid[cid] = time.time() + SUPPRESS_WINDOW_SEC
     _update_agent_activity(cid)
 
+# ===== 延时检查：必要时由机器人代答 =====
+def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
+    """客户消息后启动的后台任务：按 token + 超时阈值进行延时检查。"""
+    deadline = token + INACTIVITY_SEC
+    while time.time() < deadline:
+        socketio.sleep(0.5)
+        # 有新客户消息 => token 变化，取消
+        if last_client_msg_ts_by_cid.get(cid, 0) != token:
+            return
+        # 客服期间有任何活动 => 取消
+        if last_agent_activity_by_cid.get(cid, 0) > token:
+            return
+
+    # 超时点，保护性再次检查
+    if last_client_msg_ts_by_cid.get(cid, 0) != token:
+        return
+    if last_agent_activity_by_cid.get(cid, 0) > token:
+        return
+
+    # 若处于打字抑制窗口，等待其结束（仍随时可能被取消）
+    while _typing_suppressed(cid):
+        socketio.sleep(0.3)
+        if last_client_msg_ts_by_cid.get(cid, 0) != token:
+            return
+        if last_agent_activity_by_cid.get(cid, 0) > token:
+            return
+
+    # 仍需机器人代答：取知识库/规则回复并广播
+    kb = retrieve_best(query_fr=msg_fr, query_zh=msg_zh)
+    if kb:
+        reply_zh = kb["answer_zh"]
+    else:
+        reply_zh = (get_bot_reply(msg_zh) or msg_zh)
+    reply_fr = hybrid_translate(reply_zh, source="zh", target="fr")
+
+    ts_send = datetime.now().strftime("%Y-%m-%d %H:%M")
+    payload = {
+        "cid": cid,
+        "from": "client",
+        "original": msg_fr,
+        "client_zh": msg_zh,
+        "bot_reply": True,
+        "reply_zh": reply_zh,
+        "reply_fr": reply_fr,
+        "timestamp": ts_send
+    }
+    socketio.emit('new_message', payload, room=f"{cid}:agents")
+    socketio.emit('new_message', payload, room=f"{cid}:clients")
+    log_message("bot", "zh", reply_zh, conv_id=cid)
+    log_message("bot", "fr", reply_fr, conv_id=cid)
+
 # ===== 客户端消息（按会话）=====
 @socketio.on('client_message')
 def handle_client_message(data):
@@ -218,14 +270,21 @@ def handle_client_message(data):
     # 翻译→中文
     msg_zh = hybrid_translate(msg_fr, source="fr", target="zh")
 
-    # 记录最近客户问题
-    last_client_by_cid[cid] = {"fr": msg_fr, "zh": msg_zh, "ts": time.time()}
+    # 记录“这条客户消息”的token（时间戳）
+    token = time.time()
+    last_client_msg_ts_by_cid[cid] = token
+
+    # 记录最近客户问题（用于自动学习）
+    last_client_by_cid[cid] = {"fr": msg_fr, "zh": msg_zh, "ts": token}
+
+    # 日志
     log_message("client", "fr", msg_fr, conv_id=cid)
     log_message("client", "zh", msg_zh, conv_id=cid)
 
-    # 先查知识库
+    # 先查知识库，用于建议（人工在线时只建议，不自动发）
     kb = retrieve_best(query_fr=msg_fr, query_zh=msg_zh)
 
+    # 先把客户消息广播给两端
     payload = {
         "cid": cid,
         "from": "client",
@@ -233,34 +292,38 @@ def handle_client_message(data):
         "client_zh": msg_zh,
         "timestamp": ts
     }
+    if _manual_online(cid) and kb:
+        payload["suggest_zh"] = kb["answer_zh"]
 
-    # 机器人是否介入：手动下线 或（手动上线但已空闲超时），且未处于打字抑制
-    manual_online = _manual_online(cid)
-    inactive = _inactive_too_long(cid)
-    suppressed = _typing_suppressed(cid)
-    should_bot_reply = ((not manual_online) or inactive) and (not suppressed)
+    socketio.emit('new_message', payload, room=f"{cid}:agents")
+    socketio.emit('new_message', payload, room=f"{cid}:clients")
 
-    if should_bot_reply:
-        if kb:
-            reply_zh = kb["answer_zh"]
+    # —— 机器人介入逻辑 ——
+    if not _manual_online(cid):
+        # 人工下线：立即自动回复
+        kb2 = kb or retrieve_best(query_fr=msg_fr, query_zh=msg_zh)
+        if kb2:
+            reply_zh = kb2["answer_zh"]
         else:
-            reply_zh = get_bot_reply(msg_zh) or msg_zh
+            reply_zh = (get_bot_reply(msg_zh) or msg_zh)
         reply_fr = hybrid_translate(reply_zh, source="zh", target="fr")
-        payload.update({
+        payload2 = {
+            "cid": cid,
+            "from": "client",
+            "original": msg_fr,
+            "client_zh": msg_zh,
             "bot_reply": True,
             "reply_zh": reply_zh,
-            "reply_fr": reply_fr
-        })
+            "reply_fr": reply_fr,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        socketio.emit('new_message', payload2, room=f"{cid}:agents")
+        socketio.emit('new_message', payload2, room=f"{cid}:clients")
         log_message("bot", "zh", reply_zh, conv_id=cid)
         log_message("bot", "fr", reply_fr, conv_id=cid)
     else:
-        # 人工上线&未超时：可选给客服建议
-        if kb:
-            payload.update({"suggest_zh": kb["answer_zh"]})
-
-    # 广播到本会话
-    socketio.emit('new_message', payload, room=f"{cid}:agents")
-    socketio.emit('new_message', payload, room=f"{cid}:clients")
+        # 人工在线：30s 后再检查
+        socketio.start_background_task(_delayed_bot_reply, cid, token, msg_fr, msg_zh)
 
 # ===== 客服端消息（按会话）=====
 @socketio.on('agent_message')
@@ -282,6 +345,7 @@ def handle_agent_message(data):
     if not msg:
         return
 
+    # 客服发中文 → 客户端显示目标语言
     translated = translate_text(msg, target=target_lang, source="auto") \
         if config_store.config["TRANSLATION_ENABLED"] else msg
 

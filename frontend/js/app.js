@@ -22,34 +22,20 @@ function initApp() {
 
   // ===== 接收服务器消息 =====
   socket.on('new_message', (data) => {
-    // 非本会话的安全过滤（通常不需要，但以防万一）
-    if (data && data.cid && data.cid !== cid) return;
-
+    if (data && data.cid && data.cid !== cid) return; // 只处理本会话
     const ts = data.timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
     const isTestPage = !!(clientMsgs && agentMsgs);
 
-    // 图片消息
+    // 图片
     if (data.image) {
       if (clientMsgs) {
-        addMessage(
-          clientMsgs,
-          `<img src="${data.image}" class="chat-image">`,
-          data.from,
-          data.from === 'client' ? 'right' : 'left',
-          true,
-          ts
-        );
+        addMessage(clientMsgs, `<img src="${data.image}" class="chat-image">`,
+          data.from, data.from === 'client' ? 'right' : 'left', true, ts);
       }
       if (agentMsgs) {
         if (!(isTestPage && data.from === 'agent')) {
-          addMessage(
-            agentMsgs,
-            `<img src="${data.image}" class="chat-image">`,
-            data.from,
-            data.from === 'agent' ? 'right' : 'left',
-            true,
-            ts
-          );
+          addMessage(agentMsgs, `<img src="${data.image}" class="chat-image">`,
+            data.from, data.from === 'agent' ? 'right' : 'left', true, ts);
         }
       }
       return;
@@ -176,7 +162,7 @@ function initApp() {
     container.scrollTop = container.scrollHeight;
   }
 
-  // ===== 人工/机器切换（按会话） & 打字抑制 =====
+  // ===== 人工/机器切换（按会话）& 打字抑制 =====
   const toggleBtn = document.getElementById('agent-online-toggle');
   let agentIsOnline = true;
 
@@ -188,7 +174,6 @@ function initApp() {
   }
 
   socket.on('agent_status', (data) => {
-    // 只处理本会话的状态
     if (!data || data.cid !== cid) return;
     agentIsOnline = !!data.online;
     renderToggleBtn();
@@ -197,7 +182,6 @@ function initApp() {
   toggleBtn?.addEventListener('click', () => {
     const nextOnline = !agentIsOnline;
     socket.emit('agent_set_status', { online: nextOnline });
-    // 等服务器广播 agent_status（附带 cid）再更新 UI
   });
 
   // 打字抑制：客服输入时上报（节流）
