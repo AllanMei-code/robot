@@ -11,68 +11,67 @@ function initApp() {
 
   // ===== 接收服务器消息 =====
   socket.on('new_message', (data) => {
-  const ts = data.timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
-  const isTestPage = !!(document.getElementById('client-messages') && document.getElementById('agent-messages'));
+    const ts = data.timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
+    const isTestPage = !!(clientMsgs && agentMsgs);
 
-  // ===== 图片消息 =====
-  if (data.image) {
-    // 客户端面板一定要显示
-    if (clientMsgs) {
-      addMessage(
-        clientMsgs,
-        `<img src="${data.image}" class="chat-image">`,
-        data.from,
-        data.from === 'client' ? 'right' : 'left',
-        true,
-        ts
-      );
-    }
-    // 客服端面板：如果是测试页且图片来自客服，就不再重复（已本地预览过）
-    if (agentMsgs) {
-      if (!(isTestPage && data.from === 'agent')) {
+    // 图片消息
+    if (data.image) {
+      if (clientMsgs) {
         addMessage(
-          agentMsgs,
+          clientMsgs,
           `<img src="${data.image}" class="chat-image">`,
           data.from,
-          data.from === 'agent' ? 'right' : 'left',
+          data.from === 'client' ? 'right' : 'left',
           true,
           ts
         );
       }
-    }
-    return;
-  }
-
-  // ===== 文本消息（客户端面板）=====
-  if (clientMsgs) {
-    if (data.from === 'client') {
-      addMessage(clientMsgs, data.original || '', 'client', 'right', false, ts);
-      if (data.bot_reply) {
-        addMessage(clientMsgs, data.reply_fr || data.bot_reply, 'agent', 'left', false, ts);
+      if (agentMsgs) {
+        if (!(isTestPage && data.from === 'agent')) {
+          addMessage(
+            agentMsgs,
+            `<img src="${data.image}" class="chat-image">`,
+            data.from,
+            data.from === 'agent' ? 'right' : 'left',
+            true,
+            ts
+          );
+        }
       }
-    } else if (data.from === 'agent') {
-      addMessage(clientMsgs, data.translated || data.original || '', 'agent', 'left', false, ts);
+      return;
     }
-  }
 
-  // ===== 文本消息（客服端面板）=====
-  if (agentMsgs) {
-    if (data.from === 'client') {
-      addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, ts);
-      if (data.bot_reply) {
-        addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, ts);
-      }
-    } else if (data.from === 'agent') {
-      // 测试页：忽略服务端回推（因为发送时已本地 addMessage 过）
-      if (!isTestPage) {
-        addMessage(agentMsgs, data.original || '', 'agent', 'right', false, ts);
+    // 客户端区域
+    if (clientMsgs) {
+      if (data.from === 'client') {
+        addMessage(clientMsgs, data.original || '', 'client', 'right', false, ts);
+        if (data.bot_reply) {
+          addMessage(clientMsgs, data.reply_fr || data.bot_reply, 'agent', 'left', false, ts);
+        }
+      } else if (data.from === 'agent') {
+        addMessage(clientMsgs, data.translated || data.original || '', 'agent', 'left', false, ts);
       }
     }
-  }
-});
 
+    // 客服端区域
+    if (agentMsgs) {
+      if (data.from === 'client') {
+        addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, ts);
+        if (data.bot_reply) {
+          addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, ts);
+        } else if (data.suggest_zh) {
+          // 可选：把建议答案显示成灰色提示
+          addMessage(agentMsgs, `（建议）${data.suggest_zh}`, 'agent', 'right', false, ts);
+        }
+      } else if (data.from === 'agent') {
+        if (!isTestPage) {
+          addMessage(agentMsgs, data.original || '', 'agent', 'right', false, ts);
+        }
+      }
+    }
+  });
 
-  // ===== 客户端发送文本（不本地渲染，避免重复）=====
+  // ===== 客户端发送文本（避免重复：不本地渲染）=====
   clientInput?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') document.getElementById('client-send')?.click();
   });
@@ -83,7 +82,7 @@ function initApp() {
     clientInput.value = '';
   });
 
-  // ===== 客服端发送文本（本地立即显示，提高响应感）=====
+  // ===== 客服端发送文本（本地立即显示）=====
   agentInput?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') document.getElementById('agent-send')?.click();
   });
@@ -105,7 +104,6 @@ function initApp() {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (evt) => {
-        // 客服本地立即显示图片；客户端由广播统一渲染
         if (roleKey === 'agent' && agentMsgs) {
           addMessage(agentMsgs, `<img src="${evt.target.result}" class="chat-image">`, 'agent', 'right', true);
         }
@@ -121,7 +119,7 @@ function initApp() {
     const panel = document.getElementById(panelId);
     const btn = document.getElementById(btnId);
     const input = document.getElementById(inputId);
-    if (!panel || !btn || !input) return; // 元素不存在直接跳过
+    if (!panel || !btn || !input) return;
 
     btn.addEventListener("click", () => {
       panel.style.display = panel.style.display === "block" ? "none" : "block";
@@ -165,8 +163,33 @@ function initApp() {
     container.scrollTop = container.scrollHeight;
   }
 
-  // （可选）客服在线状态提示
-  socket.on('agent_status', (status) => {
-    console.log('Agent status:', status); // 'online' / 'offline'
+  // ===== 人工/机器切换 & 打字抑制 =====
+  const toggleBtn = document.getElementById('agent-online-toggle');
+  let agentIsOnline = true;
+
+  function renderToggleBtn() {
+    if (!toggleBtn) return;
+    toggleBtn.textContent = agentIsOnline ? '下线' : '上线';
+    toggleBtn.classList.toggle('online', agentIsOnline);
+    toggleBtn.classList.toggle('offline', !agentIsOnline);
+  }
+
+  socket.on('agent_status', (data) => {
+    agentIsOnline = !!(data && data.online);
+    renderToggleBtn();
+  });
+
+  toggleBtn?.addEventListener('click', () => {
+    const nextOnline = !agentIsOnline;
+    socket.emit('agent_set_status', { online: nextOnline });
+    // 等服务器广播再更新 UI
+  });
+
+  // 打字抑制：客服输入时上报（节流）
+  let typingTimer;
+  agentInput?.addEventListener('input', () => {
+    clearTimeout(typingTimer);
+    socket.emit('agent_typing');
+    typingTimer = setTimeout(() => {}, 500);
   });
 }
