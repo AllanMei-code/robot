@@ -11,35 +11,66 @@ function initApp() {
 
   // ===== 接收服务器消息 =====
   socket.on('new_message', (data) => {
-    // 图片消息
-    if (data.image) {
-      if (clientMsgs) addMessage(clientMsgs, `<img src="${data.image}" class="chat-image">`, data.from, data.from === 'client' ? 'right' : 'left', true, data.timestamp);
-      if (agentMsgs)  addMessage(agentMsgs,  `<img src="${data.image}" class="chat-image">`, data.from, data.from === 'agent'  ? 'right' : 'left', true, data.timestamp);
-      return;
-    }
+  const ts = data.timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
+  const isTestPage = !!(document.getElementById('client-messages') && document.getElementById('agent-messages'));
 
-    // 客户端区域
-    if (clientMsgs && data.from === 'client') {
-      addMessage(clientMsgs, data.original || '', 'client', 'right', false, data.timestamp);
-      if (data.bot_reply) {
-        addMessage(clientMsgs, data.reply_fr || data.bot_reply, 'agent', 'left', false, data.timestamp);
+  // ===== 图片消息 =====
+  if (data.image) {
+    // 客户端面板一定要显示
+    if (clientMsgs) {
+      addMessage(
+        clientMsgs,
+        `<img src="${data.image}" class="chat-image">`,
+        data.from,
+        data.from === 'client' ? 'right' : 'left',
+        true,
+        ts
+      );
+    }
+    // 客服端面板：如果是测试页且图片来自客服，就不再重复（已本地预览过）
+    if (agentMsgs) {
+      if (!(isTestPage && data.from === 'agent')) {
+        addMessage(
+          agentMsgs,
+          `<img src="${data.image}" class="chat-image">`,
+          data.from,
+          data.from === 'agent' ? 'right' : 'left',
+          true,
+          ts
+        );
       }
     }
-    if (clientMsgs && data.from === 'agent') {
-      addMessage(clientMsgs, data.translated || data.original || '', 'agent', 'left', false, data.timestamp);
-    }
+    return;
+  }
 
-    // 客服端区域
-    if (agentMsgs && data.from === 'client') {
-      addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, data.timestamp);
+  // ===== 文本消息（客户端面板）=====
+  if (clientMsgs) {
+    if (data.from === 'client') {
+      addMessage(clientMsgs, data.original || '', 'client', 'right', false, ts);
       if (data.bot_reply) {
-        addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, data.timestamp);
+        addMessage(clientMsgs, data.reply_fr || data.bot_reply, 'agent', 'left', false, ts);
+      }
+    } else if (data.from === 'agent') {
+      addMessage(clientMsgs, data.translated || data.original || '', 'agent', 'left', false, ts);
+    }
+  }
+
+  // ===== 文本消息（客服端面板）=====
+  if (agentMsgs) {
+    if (data.from === 'client') {
+      addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, ts);
+      if (data.bot_reply) {
+        addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, ts);
+      }
+    } else if (data.from === 'agent') {
+      // 测试页：忽略服务端回推（因为发送时已本地 addMessage 过）
+      if (!isTestPage) {
+        addMessage(agentMsgs, data.original || '', 'agent', 'right', false, ts);
       }
     }
-    if (agentMsgs && data.from === 'agent') {
-      addMessage(agentMsgs, data.original || '', 'agent', 'right', false, data.timestamp);
-    }
-  });
+  }
+});
+
 
   // ===== 客户端发送文本（不本地渲染，避免重复）=====
   clientInput?.addEventListener('keypress', (e) => {
