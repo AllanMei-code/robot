@@ -97,57 +97,35 @@
     }
   </style>
 </head>
-<body data-role="client">
-  <div class="container">
-    <!-- 客户界面 -->
-    <div id="client-panel" class="panel">
-      <h2>客户界面</h2>
-      <div class="message-area" id="client-messages"></div>
-    <div class="input-area">
-      <input type="text" id="client-input" placeholder="输入消息...">
-      <!-- 上传按钮 -->
-      <label for="client-file" class="icon-btn">📷</label>
-      <input type="file" id="client-file" accept="image/*" style="display:none;">
-      <!-- 表情按钮 -->
-      <button class="icon-btn emoji-btn" id="client-emoji-btn">😊</button>
-      <!-- 发送按钮 -->
-      <button id="client-send" class="send-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
-        </svg>
+<!-- 客户端 -->
+<div id="client-panel" class="panel">
+  <div class="message-area" id="client-messages"></div>
+  <div class="input-area">
+    <input type="text" id="client-input" placeholder="输入消息...">
+    <label for="client-file">📷</label>
+    <input type="file" id="client-file" accept="image/*" style="display:none;">
+    <button id="client-send">
+      <svg height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+      </svg>
     </button>
-      <div id="client-emoji-panel" class="emoji-panel">
-        <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
-        <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
-      </div>
-    </div>
   </div>
+</div>
 
-    <!-- 客服界面 -->
-<body data-role="agent"></body>
-    <div id="agent-panel" class="panel">
-      <h2>客服界面</h2>
-      <div class="message-area" id="agent-messages"></div>
-      <div class="input-area">
-        <input type="text" id="agent-input" placeholder="输入回复...">
-        <!-- ✅ 修正这里 -->
-        <label for="agent-file" class="icon-btn">📷</label>
-        <input type="file" id="agent-file" accept="image/*" style="display:none;">
-        <!-- 表情按钮 -->
-        <button class="icon-btn emoji-btn" id="agent-emoji-btn">😊</button>
-        <!-- 发送按钮 -->
-        <button id="client-send" class="send-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
-          </svg>
-      </button>
-        <div id="agent-emoji-panel" class="emoji-panel">
-          <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
-          <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
-        </div>
-      </div>
-    </div>
+<!-- 客服端 -->
+<div id="agent-panel" class="panel">
+  <div class="message-area" id="agent-messages"></div>
+  <div class="input-area">
+    <input type="text" id="agent-input" placeholder="输入回复...">
+    <label for="agent-file">📷</label>
+    <input type="file" id="agent-file" accept="image/*" style="display:none;">
+    <button id="agent-send">
+      <svg height="20" width="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+      </svg>
+    </button>
   </div>
+</div>
 
   <!-- ✅ 必须最先加载 socket.io 客户端库 -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>

@@ -51,41 +51,52 @@ function initApp() {
     }
   });
 
-  // ===== 客户端发送文本 =====
+// 客户端发送文本
 document.getElementById('client-send')?.addEventListener('click', () => {
   const msg = clientInput.value.trim();
   if (!msg) return;
-
-  // 本地立刻显示
-  if (clientMsgs) {
-    addMessage(clientMsgs, msg, 'client', 'right', false, 
-      new Date().toISOString().replace("T", " ").substring(0, 16));
-  }
-
   socket.emit('client_message', { message: msg });
   clientInput.value = '';
 });
-clientInput?.addEventListener('keypress', (e) => e.key === 'Enter' && document.getElementById('client-send').click());
 
-// ===== 客服端发送文本 =====
-// 客服端发送
+// 客户端接收消息统一处理
+socket.on('new_message', (data) => {
+  // 客户端收到自己发的消息不重复渲染
+  if(data.from === 'client' && data.original && !data.bot_reply){
+    addMessage(clientMsgs, data.original, 'client', 'right', false, data.timestamp);
+  }
+  // 客户端显示机器人翻译回复
+  if(data.reply_fr){
+    addMessage(clientMsgs, data.reply_fr, 'agent', 'left', false, data.timestamp);
+  }
+  // 客户端收到客服消息
+  if(data.from === 'agent' && data.translated){
+    addMessage(clientMsgs, data.translated, 'agent', 'left', false, data.timestamp);
+  }
+});
+
+// 客服端发送文本
 document.getElementById('agent-send')?.addEventListener('click', () => {
   const msg = agentInput.value.trim();
   if (!msg) return;
-
-  const ts = new Date().toISOString().replace("T", " ").substring(0, 16);
-
-  // 本地立即显示（右边），标记 pending
-  addMessage(agentMsgs, msg, 'agent', 'right', false, ts, { pending: true });
-
-  // 发给后端
   socket.emit('agent_message', { 
     message: msg,
     target_lang: window.AppConfig?.DEFAULT_CLIENT_LANG || 'fr'
   });
-
   agentInput.value = '';
 });
+
+// 客服端接收消息
+socket.on('new_message', (data) => {
+  if(data.from === 'client'){
+    addMessage(agentMsgs, data.client_zh, 'client', 'left', false, data.timestamp);
+    if(data.reply_zh) addMessage(agentMsgs, data.reply_zh, 'agent', 'right', false, data.timestamp);
+  }
+  if(data.from === 'agent' && data.original){
+    addMessage(agentMsgs, data.original, 'agent', 'right', false, data.timestamp);
+  }
+});
+
 
 
 
