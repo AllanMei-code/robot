@@ -5,8 +5,7 @@ import logging
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
-from flask_socketio import join_room
+from flask_socketio import SocketIO, emit, join_room
 from deep_translator import GoogleTranslator
 import threading
 from logic import get_bot_reply
@@ -14,7 +13,7 @@ from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 import requests
 
 # 学习存储
-from bot_store import init_db, log_message, upsert_qa, retrieve_best, get_setting, set_setting
+from bot_store import init_db, log_message, upsert_qa, retrieve_best
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -113,23 +112,41 @@ config_store = ConfigStore()
 # ===== 学习DB =====
 init_db()
 
-# ===== 人工/机器开关（手动优先，持久化）=====
-agent_manual_online = True  # True=人工上线(机器人不介入), False=下线(机器人介入)
-stored = get_setting('agent_manual_online', None)
-if stored is not None:
-    agent_manual_online = (str(stored).lower() == 'true')
+# ===== 选项三：按会话状态 =====
+INACTIVITY_SEC = int(os.getenv("BOT_INACTIVITY_SEC", "30"))   # 无人响应阈值（秒）
+SUPPRESS_WINDOW_SEC = int(os.getenv("BOT_SUPPRESS_SEC", "5")) # 打字抑制窗口（秒）
 
-def broadcast_agent_status():
-    socketio.emit('agent_status', {'online': agent_manual_online})
+# 会话状态字典
+session_info = {}                         # sid -> {'role': 'agent'|'client', 'cid': str}
+manual_online_by_cid = {}                 # cid -> bool (True=人工上线/不介入; False=下线/介入)
+suppress_until_by_cid = {}                # cid -> epoch 秒（客服打字抑制到期时间）
+last_agent_activity_by_cid = {}           # cid -> epoch 秒（客服上次活动时间）
+last_client_by_cid = {}                   # cid -> {'fr','zh','ts'}
 
-# ===== 打字抑制（客服输入时短暂抑制机器人抢答）=====
-suppress_until_ts = 0  # epoch 秒
-SUPPRESS_WINDOW_SEC = 5
+def _cid_of_current():
+    info = session_info.get(request.sid, {})
+    return info.get('cid', 'default')
 
-# 最近一条客户消息（用于自动学习配对）
-_last_client = {"fr": "", "zh": "", "ts": 0}
+def _manual_online(cid):
+    return manual_online_by_cid.get(cid, True)
 
-# ============== REST API ==============
+def _set_manual_online(cid, online: bool):
+    manual_online_by_cid[cid] = bool(online)
+
+def _update_agent_activity(cid):
+    last_agent_activity_by_cid[cid] = time.time()
+
+def _inactive_too_long(cid):
+    last = last_agent_activity_by_cid.get(cid, 0)
+    return (time.time() - last) > INACTIVITY_SEC
+
+def _typing_suppressed(cid):
+    return time.time() < suppress_until_by_cid.get(cid, 0)
+
+def broadcast_agent_status(cid):
+    socketio.emit('agent_status', {'cid': cid, 'online': _manual_online(cid)}, room=cid)
+
+# ============== REST API（保留） ==============
 @app.route('/api/v1/config', methods=['GET'])
 def get_config():
     return jsonify({
@@ -142,38 +159,45 @@ def get_config():
 @socketio.on('connect')
 def handle_connect():
     role = request.args.get("role", "client")
+    cid  = request.args.get("cid", "default")
+    session_info[request.sid] = {'role': role, 'cid': cid}
+
+    # 房间：cid（所有人） + 角色房间
+    join_room(cid)
     if role == "agent":
-        join_room("agents")
-        logging.info(f"客服端连接成功: {request.sid}")
+        join_room(f"{cid}:agents")
+        _update_agent_activity(cid)  # 连接也算活动，避免刚连上就触发空闲兜底
     else:
-        join_room("clients")
-        logging.info(f"客户端连接成功: {request.sid}")
-    broadcast_agent_status()
+        join_room(f"{cid}:clients")
+
+    logging.info(f"{role} 连接成功: sid={request.sid}, cid={cid}")
+    broadcast_agent_status(cid)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    logging.info(f"连接断开: {request.sid}")
+    info = session_info.pop(request.sid, None)
+    logging.info(f"连接断开: sid={request.sid}, info={info}")
 
-# ===== 手动切换：上线/下线 =====
+# ===== 手动切换：上线/下线（按会话）=====
 @socketio.on('agent_set_status')
 def handle_agent_set_status(data):
-    global agent_manual_online
+    cid = _cid_of_current()
     want_online = bool((data or {}).get('online', True))
-    agent_manual_online = want_online
-    set_setting('agent_manual_online', str(agent_manual_online))  # 持久化
-    logging.info(f"[人工切换] online={agent_manual_online}")
-    broadcast_agent_status()
+    _set_manual_online(cid, want_online)
+    logging.info(f"[人工切换][cid={cid}] online={want_online}")
+    broadcast_agent_status(cid)
 
-# ===== 客服正在输入（临时抑制机器人）=====
+# ===== 客服正在输入（按会话，抑制机器人）=====
 @socketio.on('agent_typing')
 def handle_agent_typing(_data=None):
-    global suppress_until_ts
-    suppress_until_ts = time.time() + SUPPRESS_WINDOW_SEC
+    cid = _cid_of_current()
+    suppress_until_by_cid[cid] = time.time() + SUPPRESS_WINDOW_SEC
+    _update_agent_activity(cid)
 
-# ===== 客户端消息 =====
+# ===== 客户端消息（按会话）=====
 @socketio.on('client_message')
 def handle_client_message(data):
-    global _last_client, agent_manual_online, suppress_until_ts
+    cid = _cid_of_current()
 
     msg_fr = (data or {}).get('message', '')
     image  = (data or {}).get('image')
@@ -181,10 +205,10 @@ def handle_client_message(data):
 
     # 图片
     if image:
-        payload_img = {"from": "client", "image": image, "timestamp": ts}
-        socketio.emit('new_message', payload_img, room="agents")
-        socketio.emit('new_message', payload_img, room="clients")
-        log_message("client", "img", "[image]")
+        payload_img = {"cid": cid, "from": "client", "image": image, "timestamp": ts}
+        socketio.emit('new_message', payload_img, room=f"{cid}:agents")
+        socketio.emit('new_message', payload_img, room=f"{cid}:clients")
+        log_message("client", "img", "[image]", conv_id=cid)
         return
 
     msg_fr = (msg_fr or "").strip()
@@ -195,22 +219,26 @@ def handle_client_message(data):
     msg_zh = hybrid_translate(msg_fr, source="fr", target="zh")
 
     # 记录最近客户问题
-    _last_client = {"fr": msg_fr, "zh": msg_zh, "ts": time.time()}
-    log_message("client", "fr", msg_fr)
-    log_message("client", "zh", msg_zh)
+    last_client_by_cid[cid] = {"fr": msg_fr, "zh": msg_zh, "ts": time.time()}
+    log_message("client", "fr", msg_fr, conv_id=cid)
+    log_message("client", "zh", msg_zh, conv_id=cid)
 
     # 先查知识库
     kb = retrieve_best(query_fr=msg_fr, query_zh=msg_zh)
 
     payload = {
+        "cid": cid,
         "from": "client",
         "original": msg_fr,
         "client_zh": msg_zh,
         "timestamp": ts
     }
 
-    # 机器人是否介入：由“手动开关 + 打字抑制”决定
-    should_bot_reply = (not agent_manual_online) and (time.time() >= suppress_until_ts)
+    # 机器人是否介入：手动下线 或（手动上线但已空闲超时），且未处于打字抑制
+    manual_online = _manual_online(cid)
+    inactive = _inactive_too_long(cid)
+    suppressed = _typing_suppressed(cid)
+    should_bot_reply = ((not manual_online) or inactive) and (not suppressed)
 
     if should_bot_reply:
         if kb:
@@ -223,59 +251,56 @@ def handle_client_message(data):
             "reply_zh": reply_zh,
             "reply_fr": reply_fr
         })
-        log_message("bot", "zh", reply_zh)
-        log_message("bot", "fr", reply_fr)
+        log_message("bot", "zh", reply_zh, conv_id=cid)
+        log_message("bot", "fr", reply_fr, conv_id=cid)
     else:
-        # 人工上线：可选给客服端提供建议答案
+        # 人工上线&未超时：可选给客服建议
         if kb:
             payload.update({"suggest_zh": kb["answer_zh"]})
 
-    # 广播
-    socketio.emit('new_message', payload, room="agents")
-    socketio.emit('new_message', payload, room="clients")
+    # 广播到本会话
+    socketio.emit('new_message', payload, room=f"{cid}:agents")
+    socketio.emit('new_message', payload, room=f"{cid}:clients")
 
-# ===== 客服端消息 =====
+# ===== 客服端消息（按会话）=====
 @socketio.on('agent_message')
 def handle_agent_message(data):
-    global _last_client
-
+    cid = _cid_of_current()
     msg = (data or {}).get('message', '').strip()
     image = (data or {}).get('image')
     target_lang = (data or {}).get('target_lang', config_store.config["DEFAULT_CLIENT_LANG"])
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    _update_agent_activity(cid)  # 任何客服动作都更新活跃时间
+
     if image:
-        payload = {"from": "agent", "image": image, "timestamp": ts}
-        socketio.emit('new_message', payload, room="clients")
-        log_message("agent", "img", "[image]")
+        payload = {"cid": cid, "from": "agent", "image": image, "timestamp": ts}
+        socketio.emit('new_message', payload, room=f"{cid}:clients")
+        log_message("agent", "img", "[image]", conv_id=cid)
         return
 
     if not msg:
         return
 
-    # 客服发中文 → 客户端显示法语
     translated = translate_text(msg, target=target_lang, source="auto") \
         if config_store.config["TRANSLATION_ENABLED"] else msg
 
     payload = {
+        "cid": cid,
         "from": "agent",
         "original": msg,
         "translated": translated,
         "timestamp": ts
     }
-    socketio.emit('new_message', payload, room="clients")
-    log_message("agent", "zh", msg)
-    log_message("agent", target_lang, translated)
+    socketio.emit('new_message', payload, room=f"{cid}:clients")
+    log_message("agent", "zh", msg, conv_id=cid)
+    log_message("agent", target_lang, translated, conv_id=cid)
 
-    # 自动学习（把最近客户问→本次客服答 作为标准答案）
+    # 自动学习（最近客户问 → 本次客服答）
     try:
-        if _last_client.get("zh") and (time.time() - _last_client.get("ts", 0) < 180):
-            upsert_qa(
-                q_fr=_last_client.get("fr", ""),
-                q_zh=_last_client["zh"],
-                a_zh=msg,
-                source="agent_auto"
-            )
+        lc = last_client_by_cid.get(cid, {})
+        if lc.get("zh") and (time.time() - lc.get("ts", 0) < 180):
+            upsert_qa(q_fr=lc.get("fr",""), q_zh=lc["zh"], a_zh=msg, source="agent_auto")
     except Exception as e:
         logging.warning(f"auto-learn failed: {e}")
 

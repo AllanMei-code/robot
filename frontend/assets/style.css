@@ -205,5 +205,6 @@ body {
   border: 1px solid #e5e7eb; border-radius: 8px;
   background:#fff; cursor:pointer; padding:0 8px;
 }
+.status-btn{height:40px;min-width:60px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;padding:0 8px;}
 .status-btn.online { background:#10b981; color:#fff; border-color:#10b981; }  /* 上线=绿色，按钮文案：下线 */
 .status-btn.offline{ background:#ef4444; color:#fff; border-color:#ef4444; }  /* 下线=红色，按钮文案：上线 */

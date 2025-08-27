@@ -1,8 +1,19 @@
 document.addEventListener('configReady', initApp);
 
 function initApp() {
+  // ===== 生成/读取会话ID（cid）=====
+  const urlCid = new URLSearchParams(location.search).get('cid');
+  let cid = urlCid || localStorage.getItem('cid');
+  if (!cid) {
+    cid = 'cid_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('cid', cid);
+  }
+
   const role = document.body.dataset.role || "client";
-  const socket = io("http://3.71.28.18:5000", { transports: ['websocket'], query: { role } });
+  const socket = io("http://3.71.28.18:5000", {
+    transports: ['websocket'],
+    query: { role, cid }
+  });
 
   const clientInput = document.getElementById('client-input');
   const agentInput  = document.getElementById('agent-input');
@@ -11,6 +22,9 @@ function initApp() {
 
   // ===== 接收服务器消息 =====
   socket.on('new_message', (data) => {
+    // 非本会话的安全过滤（通常不需要，但以防万一）
+    if (data && data.cid && data.cid !== cid) return;
+
     const ts = data.timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
     const isTestPage = !!(clientMsgs && agentMsgs);
 
@@ -60,7 +74,6 @@ function initApp() {
         if (data.bot_reply) {
           addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, ts);
         } else if (data.suggest_zh) {
-          // 可选：把建议答案显示成灰色提示
           addMessage(agentMsgs, `（建议）${data.suggest_zh}`, 'agent', 'right', false, ts);
         }
       } else if (data.from === 'agent') {
@@ -71,7 +84,7 @@ function initApp() {
     }
   });
 
-  // ===== 客户端发送文本（避免重复：不本地渲染）=====
+  // ===== 客户端发送文本（不本地渲染，避免重复）=====
   clientInput?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') document.getElementById('client-send')?.click();
   });
@@ -82,7 +95,7 @@ function initApp() {
     clientInput.value = '';
   });
 
-  // ===== 客服端发送文本（本地立即显示）=====
+  // ===== 客服端发送文本（本地立即渲染）=====
   agentInput?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') document.getElementById('agent-send')?.click();
   });
@@ -114,7 +127,7 @@ function initApp() {
     });
   });
 
-  // ===== 表情选择逻辑 =====
+  // ===== 表情选择 =====
   function setupEmoji(panelId, btnId, inputId) {
     const panel = document.getElementById(panelId);
     const btn = document.getElementById(btnId);
@@ -163,7 +176,7 @@ function initApp() {
     container.scrollTop = container.scrollHeight;
   }
 
-  // ===== 人工/机器切换 & 打字抑制 =====
+  // ===== 人工/机器切换（按会话） & 打字抑制 =====
   const toggleBtn = document.getElementById('agent-online-toggle');
   let agentIsOnline = true;
 
@@ -175,14 +188,16 @@ function initApp() {
   }
 
   socket.on('agent_status', (data) => {
-    agentIsOnline = !!(data && data.online);
+    // 只处理本会话的状态
+    if (!data || data.cid !== cid) return;
+    agentIsOnline = !!data.online;
     renderToggleBtn();
   });
 
   toggleBtn?.addEventListener('click', () => {
     const nextOnline = !agentIsOnline;
     socket.emit('agent_set_status', { online: nextOnline });
-    // 等服务器广播再更新 UI
+    // 等服务器广播 agent_status（附带 cid）再更新 UI
   });
 
   // 打字抑制：客服输入时上报（节流）
