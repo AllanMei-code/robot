@@ -63,7 +63,7 @@ body {
 }
 
 /* ===== 三个图标统一外观与尺寸（📷 / 😊 / ✈️）===== */
-/* 容器：统一为 40×40，圆角、边框、悬停态 */
+/* 基础容器：统一 40×40，圆角、边框、对齐、currentColor 传递给文本 & SVG */
 .icon-btn,       /* 摄像头（label） */
 .emoji-btn,      /* 表情（button） */
 .send-btn {      /* 发送（button） */
@@ -76,40 +76,39 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
+  color: #374151;
   cursor: pointer;
   user-select: none;
   padding: 0;
-  color: #374151;           /* currentColor：SVG/文本都能继承到颜色 */
 }
 
+/* 悬停态：通用图标按钮为浅灰，发送按钮单独定义（见下） */
 .icon-btn:hover,
-.emoji-btn:hover,
-.send-btn:hover {
+.emoji-btn:hover {
   background: #f3f4f6;
 }
 
-/* 文字符号（📷、😊）的大小 */
+/* 文字符号（📷、😊）大小 */
 .icon-btn,
 .emoji-btn {
-  font-size: 22px;          /* 统一字形大小 */
+  font-size: 22px;
   line-height: 1;
 }
 
-/* 飞机（SVG）的大小；也兼容以后相机用 SVG */
+/* 规范 SVG 尺寸与颜色（相机若改成 SVG 也适配） */
 .send-btn svg,
 .icon-btn svg {
   width: 22px;
   height: 22px;
   display: block;
-  /* 如果你的 <svg> 里没有写 fill="currentColor"，取消下一行注释即可强制走 currentColor */
-  /* fill: currentColor; */
+  fill: currentColor; /* 小飞机/相机等 SVG 继承按钮文字色 */
 }
 
-/* 发送按钮主色（保持可见度与区分度） */
+/* 发送按钮主色（可见度与区分度） */
 .send-btn {
   background: #2563eb;
   border-color: #2563eb;
-  color: #fff;              /* 让 SVG/文本跟随变白 */
+  color: #fff;         /* 让 SVG/文本跟随变白 */
 }
 .send-btn:hover {
   background: #1d4ed8;
@@ -153,58 +152,24 @@ body {
   border-radius: 8px;
   display: block;
 }
-/* 统一三类图标容器尺寸与对齐 */
-.icon-btn,
-.emoji-btn,
-.send-btn {
-  width: 40px !important;
-  height: 40px !important;
-  flex: 0 0 40px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 8px !important;
-  background: #fff !important;
-  color: #374151 !important; /* 让“文字图标”与 SVG 的 currentColor 都可见 */
-  padding: 0 !important;
-  cursor: pointer !important;
-}
 
-/* 悬停态 */
-.icon-btn:hover,
-.emoji-btn:hover,
-.send-btn:hover {
-  background: #000000 !important;
+/* ===== 状态按钮 ===== */
+.status-btn {
+  height: 40px;
+  min-width: 60px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  padding: 0 8px;
 }
-
-/* 表情/相机用的是“文字图标”时的大小 */
-.icon-btn,
-.emoji-btn {
-  font-size: 22px !important;
-  line-height: 1 !important;
+.status-btn.online {
+  background: #10b981;
+  color: #fff;
+  border-color: #10b981; /* 上线=绿色，按钮文案：下线 */
 }
-
-/* 发送按钮用主色，确保小飞机对比度足够 */
-.send-btn {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
-  color: #ffffff !important; /* 小飞机使用 currentColor -> 白色 */
+.status-btn.offline {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444; /* 下线=红色，按钮文案：上线 */
 }
-
-/* 规范 SVG 尺寸与颜色（相机若改成 SVG 也适配） */
-.send-btn svg,
-.icon-btn svg {
-  width: 22px !important;
-  height: 22px !important;
-  display: block !important;
-  fill: currentColor !important; /* 关键：小飞机使用按钮的文字色 */
-}
-.status-btn{
-  height: 40px; min-width: 60px;
-  border: 1px solid #e5e7eb; border-radius: 8px;
-  background:#fff; cursor:pointer; padding:0 8px;
-}
-.status-btn{height:40px;min-width:60px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;padding:0 8px;}
-.status-btn.online { background:#10b981; color:#fff; border-color:#10b981; }  /* 上线=绿色，按钮文案：下线 */
-.status-btn.offline{ background:#ef4444; color:#fff; border-color:#ef4444; }  /* 下线=红色，按钮文案：上线 */
