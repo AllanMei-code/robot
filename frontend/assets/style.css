@@ -208,8 +208,9 @@ body {
   color: var(--on-primary);         /* 让 SVG/文本跟随变白 */
 }
 .send-btn:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  background: #000000;   /* 黑色背景 */
+  border-color: #000000; /* 边框也改成黑色 */
+  color: #ffffff;        /* 保持文字/小飞机图标为白色 */
 }
 .send-btn:active {
   background: var(--primary-active);
