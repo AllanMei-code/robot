@@ -28,7 +28,7 @@
   /* 聊天气泡（活力青绿方案） */
   --bubble-text:        #F1FAFF;
   /* 对方气泡：深蓝青 → 深海蓝 渐变 */
-  --bubble-agent-grad:  linear-gradient(135deg, #0D3342 0%, #0A2330 100%);
+  --bubble-agent-grad:  linear-gradient(135deg,#0A2330 100%， #0D3342 0%,);
   /* 我的气泡：明亮青绿 → 靛青 渐变（活力） */
   --bubble-client-grad: linear-gradient(135deg, #06B6D4 0%, #10B981 100%);
 
