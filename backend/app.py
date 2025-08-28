@@ -19,7 +19,11 @@ from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 from logic import get_bot_reply
 
 # 学习/检索
-from backend.policy import init_db, log_message, upsert_qa, retrieve_best
+from .bot_store import init_db, log_message, upsert_qa, retrieve_best
+from .policy import detect_lang, classify_topic, out_of_scope_reply, ALLOWED_TOPICS
+from .templates_kb import render_template
+from .responses import polite_short
+from .logic import get_bot_reply
 
 # 新增：主题/语言策略 & 模板礼貌回复
 from policy import detect_lang, classify_topic, out_of_scope_reply, ALLOWED_TOPICS
