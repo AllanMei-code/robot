@@ -141,3 +141,6 @@ input[type="file"]#client-file,input[type="file"]#agent-file{ display:none; }
 }
 .status-btn.online{ background:#10b981; color:#021b14; border-color:#10b981; }
 .status-btn.offline{ background:#ef4444; color:#1b0001; border-color:#ef4444; }
+
+.message-content{ margin-bottom:22px; } /* 给时间徽标留空间 */
+.message-time{ white-space: nowrap; }   /* 避免在连字符处换行 */
