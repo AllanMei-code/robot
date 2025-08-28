@@ -175,7 +175,7 @@ body {
 .icon-btn:hover,
 .emoji-btn:hover,
 .send-btn:hover {
-  background: #f3f4f6 !important;
+  background: #000000 !important;
 }
 
 /* 表情/相机用的是“文字图标”时的大小 */
