@@ -20,6 +20,18 @@ function initApp() {
   const clientMsgs  = document.getElementById('client-messages');
   const agentMsgs   = document.getElementById('agent-messages');
 
+  function formatTimestampToMDHM(input) {
+    const src = typeof input === 'string' ? input : '';
+    // 兼容 "YYYY-MM-DD HH:mm" 或 ISO
+    const d = new Date(src.includes(' ') ? src.replace(' ', 'T') : src || Date.now());
+    const pad = n => String(n).padStart(2, '0');
+    const MM = pad(d.getMonth() + 1);
+    const DD = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    return `${MM}/${DD} ${hh}:${mm}`;
+  }
+
   // ===== 接收服务器消息 =====
   socket.on('new_message', (data) => {
     if (data && data.cid && data.cid !== cid) return; // 只处理本会话
