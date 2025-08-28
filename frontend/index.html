@@ -2,54 +2,54 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>客服系统测试</title>
-  <link rel="stylesheet" href="assets/style.css"/>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
-    .container { display: flex; justify-content: space-between; gap: 20px; padding: 20px; height: 100vh; box-sizing: border-box; }
-    .panel { width: 48%; border: 1px solid #ccc; border-radius: 8px; display: flex; flex-direction: column; background: #fff; }
-    .panel h2 { text-align: center; margin: 10px 0; }
-    .message-area { flex: 1; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 10px; overflow-y: auto; background: #fafafa; }
-    .input-area { display: flex; gap: 5px; align-items: center; padding: 5px; position: relative; }
-    .input-area input[type="text"] { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-    .message-wrapper { display: flex; margin: 10px 0 18px; }
-    .message-wrapper.left { justify-content: flex-start; }
-    .message-wrapper.right { justify-content: flex-end; }
-    .message-content { max-width: 60%; padding: 8px 12px; border-radius: 10px; background: #f0f0f0; word-wrap: break-word; position: relative; }
-    .message-content.client { background: #d1f0d1; }
-    .message-content.agent  { background: #d1d9f0; }
-    .message-title { font-weight: bold; margin-bottom: 2px; font-size: 12px; }
-    .message-time { font-size: 10px; color: #666; position: absolute; bottom: -16px; right: 0; }
-    .chat-image { max-width: 150px; max-height: 150px; border-radius: 8px; }
-    .emoji-btn { background: none; border: none; font-size: 22px; cursor: pointer; }
-    .emoji-panel { display: none; position: absolute; right: 52px; bottom: 42px; background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); z-index: 10; }
-    .emoji-panel span { cursor: pointer; font-size: 20px; margin: 3px; display: inline-block; }
-    .emoji-container { position: relative; }
-    .send-btn { background: none; border: none; cursor: pointer; padding: 4px; }
-    .status-btn{height:40px;min-width:60px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;padding:0 8px;}
-    .status-btn.online{background:#10b981;color:#fff;border-color:#10b981;}
-    .status-btn.offline{background:#ef4444;color:#fff;border-color:#ef4444;}
-  </style>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>客服系统测试 · 深色主题</title>
+  <!-- 加版本号避免缓存 -->
+  <link rel="stylesheet" href="assets/style.css?v=2025-08-28-02" />
 </head>
-<body data-role="client">
+
+<!--
+  1) 深色主题：class="theme-dark"
+  2) 启用背景水印：class 再加 has-chat-bg，并在 style 里设置 --chat-bg-image
+     没有 logo 时可去掉 has-chat-bg（仍是深色背景）
+-->
+<body class="theme-dark has-chat-bg"
+      style="--chat-bg-image:url('assets/gamesawa-logo.svg'); --chat-bg-opacity:.22"
+      data-role="client">
+
   <div class="container">
     <!-- 客户端 -->
     <div id="client-panel" class="panel">
       <h2>客户界面</h2>
+
       <div class="message-area" id="client-messages"></div>
-      <div class="input-area emoji-container">
-        <input type="text" id="client-input" placeholder="输入消息..."/>
-        <label for="client-file" class="icon-btn">📷</label>
-        <input type="file" id="client-file" accept="image/*" style="display:none;"/>
-        <button class="emoji-btn" id="client-emoji-btn">😊</button>
-        <div id="client-emoji-panel" class="emoji-panel">
+
+      <div class="input-area">
+        <input type="text" id="client-input" placeholder="输入消息..." />
+
+        <!-- 上传图片 -->
+        <label for="client-file" class="tool-btn" title="上传图片">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M20 5h-3.2l-1.2-2H8.4L7.2 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-8 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/>
+          </svg>
+        </label>
+        <input type="file" id="client-file" accept="image/*" style="display:none;" />
+
+        <!-- 表情 -->
+        <button id="client-emoji-btn" class="tool-btn" title="表情">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm-3 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm-7 6a5.5 5.5 0 0 0 10 0h-2a3.5 3.5 0 0 1-6 0H8Z"/>
+          </svg>
+        </button>
+        <div id="client-emoji-panel" class="emoji-panel" style="display:none;">
           <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
           <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
         </div>
-        <button id="client-send" class="send-btn primary" aria-label="发送">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+
+        <!-- 发送 -->
+        <button id="client-send" class="tool-btn primary" title="发送">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M2 21 23 12 2 3v7l15 2-15 2v7z"/>
           </svg>
         </button>
       </div>
@@ -58,58 +58,48 @@
     <!-- 客服端 -->
     <div id="agent-panel" class="panel">
       <h2>客服界面</h2>
+
       <div class="message-area" id="agent-messages"></div>
-      <div class="input-area emoji-container">
-        <input type="text" id="agent-input" placeholder="输入回复..."/>
-        <label for="agent-file" class="icon-btn">📷</label>
-        <input type="file" id="agent-file" accept="image/*" style="display:none;"/>
-        <button class="emoji-btn" id="agent-emoji-btn">😊</button>
-        <div id="agent-emoji-panel" class="emoji-panel">
+
+      <div class="input-area">
+        <input type="text" id="agent-input" placeholder="输入回复..." />
+
+        <!-- 上传图片 -->
+        <label for="agent-file" class="tool-btn" title="上传图片">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M20 5h-3.2l-1.2-2H8.4L7.2 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-8 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/>
+          </svg>
+        </label>
+        <input type="file" id="agent-file" accept="image/*" style="display:none;" />
+
+        <!-- 表情 -->
+        <button id="agent-emoji-btn" class="tool-btn" title="表情">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm-3 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm-7 6a5.5 5.5 0 0 0 10 0h-2a3.5 3.5 0 0 1-6 0H8Z"/>
+          </svg>
+        </button>
+        <div id="agent-emoji-panel" class="emoji-panel" style="display:none;">
           <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
           <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
         </div>
-        <!-- 客服端输入区内，紧挨着发送按钮放置 -->
-        <button id="agent-online-toggle" class="status-btn" title="人工上线/下线">下线</button>
-        <button id="agent-send" class="send-btn primary" aria-label="发送">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+
+        <!-- （可选）人工/机器人切换按钮：如需显示请取消注释
+        <button id="agent-online-toggle" class="status-btn online" title="人工上线/下线">下线</button>
+        -->
+
+        <!-- 发送 -->
+        <button id="agent-send" class="tool-btn primary" title="发送">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M2 21 23 12 2 3v7l15 2-15 2v7z"/>
           </svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 必须先加载 socket.io -->
+  <!-- 脚本 -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <!-- 再加载你的配置与应用脚本 -->
-  <script src="js/config.js"></script>
-  <script src="js/app.js"></script>
-
-  <script>
-    // 表情绑定
-    function setupEmoji(panelId, btnId, inputId) {
-      const panel = document.getElementById(panelId);
-      const btn = document.getElementById(btnId);
-      const input = document.getElementById(inputId);
-      if (!panel || !btn || !input) return;
-
-      btn.addEventListener("click", () => {
-        panel.style.display = panel.style.display === "block" ? "none" : "block";
-      });
-
-      panel.querySelectorAll("span").forEach(span => {
-        span.addEventListener("click", () => {
-          input.value += span.textContent;
-          panel.style.display = "none";
-        });
-      });
-
-      document.addEventListener("click", (e) => {
-        if (!btn.contains(e.target) && !panel.contains(e.target)) panel.style.display = "none";
-      });
-    }
-    setupEmoji("client-emoji-panel", "client-emoji-btn", "client-input");
-    setupEmoji("agent-emoji-panel", "agent-emoji-btn", "agent-input");
-  </script>
+  <script src="js/config.js?v=2025-08-28-02"></script>
+  <script src="js/app.js?v=2025-08-28-02"></script>
 </body>
 </html>

@@ -1,249 +1,143 @@
-/* ===== 基础 ===== */
+/* ========== Dark Theme 基础变量 ========== */
 :root{
-  /* 可调：背景图透明度（0~1） */
-  --chat-bg-opacity: .25;
+  --bg: #0a0f16;                /* 背景 */
+  --panel: rgba(16,21,30,.85);  /* 面板底色(带透明以配合背景) */
+  --panel-border: #1e293b;      /* 面板描边 */
+  --text: #e5e7eb;              /* 主文字 */
+  --muted: #9ca3af;             /* 次级文字 */
+  --bubble-client: #22c55e;     /* 客户端气泡 */
+  --bubble-client-text:#052e16;
+  --bubble-agent:  #60a5fa;     /* 客服端/机器人气泡 */
+  --bubble-agent-text:#0b1220;
+  --tool: #0f172a;              /* 工具按钮底色 */
+  --tool-border:#334155;
+  --tool-hover:#0b1220;
+  --primary:#2563eb;            /* 主色(发送按钮) */
+  --primary-hover:#000;         /* 悬停变黑（你之前的要求） */
+  --shadow: 0 8px 24px rgba(0,0,0,.35);
+  --radius: 12px;
+
+  /* 背景图(可选) */
+  --chat-bg-opacity: .22;       /* 背景图透明度 */
 }
 
+/* ========== 全局布局/背景 ========== */
 *{box-sizing:border-box}
-
+html,body{height:100%}
 body{
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 20px;
-  color: #e5e7eb;                 /* 文本浅灰，适配深色背景 */
-  background: #000;               /* 整体黑色背景 */
-  min-height: 100vh;
+  margin:0; padding:20px;
+  color:var(--text);
+  background: radial-gradient(1200px 800px at 20% -10%, #0b1220 0%, var(--bg) 45%) fixed;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
 }
 
-/* 可选：开启背景图片时给 <body> 加 class="has-chat-bg"，并设置 --chat-bg-image 变量 */
-body.has-chat-bg{ position: relative; }
+/* 背景图水印（可选） */
+body.has-chat-bg{ position:relative; }
 body.has-chat-bg::before{
-  content:"";
-  position: fixed;
-  inset: 0;
-  background: var(--chat-bg-image) center/cover no-repeat;
+  content:""; position:fixed; inset:0;
+  background:
+    radial-gradient(1000px 700px at 80% 10%, rgba(37,99,235,.25), transparent 60%) ,
+    linear-gradient(180deg, rgba(96,165,250,.12), transparent 35%);
+  pointer-events:none; z-index:-2;
+}
+body.has-chat-bg::after{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background: var(--chat-bg-image) center/contain no-repeat;
   opacity: var(--chat-bg-opacity);
-  pointer-events: none;
-  z-index: -1;
+  filter: grayscale(100%) contrast(110%) opacity(var(--chat-bg-opacity));
 }
 
-/* ===== 布局 ===== */
-.container{
-  display: flex;
-  gap: 20px;
-  height: 90vh;
-}
-
+/* ========== 两列容器 & 面板 ========== */
+.container{ display:flex; gap:24px; height:90vh; }
 .panel{
-  flex: 1;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  background: rgba(17,17,17,.85);     /* 半透明深色面板，搭配背景图也好看 */
-  backdrop-filter: blur(2px);
+  flex:1; display:flex; flex-direction:column; gap:10px;
+  background:var(--panel); border:1px solid var(--panel-border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow); backdrop-filter: blur(4px);
 }
-
 .panel h2{
-  margin: 6px 8px 10px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #f3f4f6;
+  margin:10px 12px 0; font-size:16px; font-weight:700; color:#cbd5e1; opacity:.9;
 }
 
-/* ===== 消息区（带滚动条） ===== */
+/* ========== 消息区(滚动条) ========== */
 .message-area{
-  flex: 1;
-  padding: 15px;
-  overflow-y: auto;
-  background: rgba(0,0,0,.35);
-  border: 1px solid #1f2937;
-  border-radius: 10px;
-  /* 让滚动条空间稳定，避免出现/消失时抖动 */
+  flex:1; margin:10px; padding:16px;
+  overflow-y:auto; border-radius: var(--radius);
+  background: rgba(11,17,26,.55); border:1px solid #1f2937;
   scrollbar-gutter: stable both-edges;
 }
+/* Firefox */
+.message-area{ scrollbar-width:thin; scrollbar-color:#64748b #0b1220; }
+/* WebKit */
+.message-area::-webkit-scrollbar{ width:10px; }
+.message-area::-webkit-scrollbar-thumb{ background:#64748b; border-radius:8px; }
+.message-area::-webkit-scrollbar-thumb:hover{ background:#94a3b8; }
+.message-area::-webkit-scrollbar-track{ background:#0b1220; border-radius:8px; }
 
-/* Firefox 滚动条 */
-.message-area{
-  scrollbar-width: thin;
-  scrollbar-color: #6b7280 #111827; /* 拇指/轨道 */
-}
-/* WebKit 滚动条 */
-.message-area::-webkit-scrollbar{ width: 10px; height: 10px; }
-.message-area::-webkit-scrollbar-thumb{
-  background: #6b7280;
-  border-radius: 8px;
-}
-.message-area::-webkit-scrollbar-thumb:hover{
-  background: #9ca3af;
-}
-.message-area::-webkit-scrollbar-track{
-  background: #111827;
-  border-radius: 8px;
-}
-
-/* ===== 输入区 & 表情面板定位 ===== */
-.input-area{
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
+/* ========== 输入区 & 工具按钮 ========== */
+.input-area{ display:flex; align-items:center; gap:10px; padding:0 12px 14px; }
 .input-area input[type="text"]{
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #374151;
-  border-radius: 8px;
-  background: #0b0f16;
-  color: #e5e7eb;
-  outline: none;
+  flex:1; height:44px; padding:0 12px;
+  color:var(--text); background:#0b1220;
+  border:1px solid var(--tool-border); border-radius: var(--radius);
+  outline:none;
 }
-.input-area input[type="text"]::placeholder{ color: #9ca3af; }
+.input-area input::placeholder{ color:var(--muted); }
 
-/* 表情面板 */
-.emoji-panel{
-  position: absolute;
-  bottom: 46px; /* 高度 = 工具按钮高度 + 间距 */
-  left: 0;
-  display: none;
-  background: #0b0f16;
-  border: 1px solid #374151;
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-  z-index: 10;
-}
-.emoji-panel span{
-  cursor: pointer;
-  font-size: 20px;
-  display: inline-block;
-  margin: 4px;
-  transition: transform .08s ease;
-}
-.emoji-panel span:hover{ transform: scale(1.15); }
-
-/* ===== 工具栏按钮（统一尺寸） ===== */
+/* 统一三按钮：📷 😊 发送 */
 .tool-btn,
-#client-send,
-#agent-send,
-label[for="client-file"],
-label[for="agent-file"]{
-  width: 36px;
-  height: 36px;
-  border: 1px solid #374151;
-  border-radius: 10px;
-  background: #0b0f16;
-  color: #e5e7eb;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-  font-size: 18px; /* emoji / 摄像头图标字号 */
-  line-height: 1;
-  padding: 0;
-  transition: background .15s ease, border-color .15s ease, transform .05s ease, color .15s ease;
+#client-send,#agent-send,
+label[for="client-file"],label[for="agent-file"]{
+  width:44px; height:44px; border-radius:12px;
+  background:var(--tool); color:var(--text);
+  border:1px solid var(--tool-border);
+  display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; user-select:none; padding:0;
+  transition: all .15s ease;
 }
 .tool-btn:hover,
-#client-send:hover,
-#agent-send:hover{
-  background: #111827;
-  border-color: #4b5563;
+#client-send:hover,#agent-send:hover,
+label[for="client-file"]:hover,label[for="agent-file"]:hover{
+  background:var(--tool-hover); border-color:#475569; transform: translateY(-1px);
 }
 .tool-btn:active,
-#client-send:active,
-#agent-send:active{
-  transform: translateY(1px);
+#client-send:active,#agent-send:active{ transform: translateY(0); }
+
+/* 主按钮(发送) */
+.tool-btn.primary,#client-send.primary,#agent-send.primary{
+  background: var(--primary); border-color: var(--primary); color:#fff;
+}
+.tool-btn.primary:hover,#client-send.primary:hover,#agent-send.primary:hover{
+  background: var(--primary-hover); border-color: var(--primary-hover); color:#fff;
 }
 
-/* 发送按钮主色（默认蓝），悬停时变黑 —— 需求 #1 */
-.tool-btn.primary,
-#client-send.primary,
-#agent-send.primary{
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-.tool-btn.primary:hover,
-#client-send.primary:hover,
-#agent-send.primary:hover{
-  background: #000;       /* ← 悬停时纯黑 */
-  border-color: #000;
-  color: #fff;
-}
-
-/* 确保 SVG 小飞机使用当前文字色，避免“看不到”问题 */
-.tool-btn svg,
-#client-send svg,
-#agent-send svg{ width: 18px; height: 18px; display: block; }
-.tool-btn svg path,
-#client-send svg path,
-#agent-send svg path{ fill: currentColor; }
+/* SVG 图标统一随文字色渲染 */
+.tool-btn svg,#client-send svg,#agent-send svg{ width:20px; height:20px; display:block; }
+.tool-btn svg path,#client-send svg path,#agent-send svg path{ fill: currentColor; }
 
 /* 隐藏原生 file input */
-input[type="file"]#client-file,
-input[type="file"]#agent-file{ display: none; }
+input[type="file"]#client-file,input[type="file"]#agent-file{ display:none; }
 
-/* ===== 消息气泡 ===== */
-.message-wrapper{ display:flex; margin: 10px 0; }
-.message-wrapper.left{  justify-content: flex-start; }
-.message-wrapper.right{ justify-content: flex-end; }
-
+/* ========== 气泡 & 图片 ========== */
+.message-wrapper{ display:flex; margin:10px 0; }
+.message-wrapper.left{  justify-content:flex-start; }
+.message-wrapper.right{ justify-content:flex-end; }
 .message-content{
-  max-width: 70%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  max-width:72%; padding:10px 12px; border-radius:14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.20); position:relative;
   word-wrap: break-word;
-  position: relative;
 }
+.message-content.client{ background: var(--bubble-client); color: var(--bubble-client-text); }
+.message-content.agent{  background: var(--bubble-agent);  color: var(--bubble-agent-text); }
+.message-title{ font-weight:700; margin-bottom:4px; font-size:12px; opacity:.9; }
+.message-time{ position:absolute; bottom:-16px; right:6px; font-size:10px; color:#cbd5e1; }
+.chat-image{ max-width:260px; max-height:260px; border-radius:10px; display:block; box-shadow: var(--shadow); }
 
-/* 两端颜色（适配深色背景） */
-.message-content.client{
-  background: #0ea5e9;    /* 青蓝 */
-  color: #001219;
-}
-.message-content.agent{
-  background: #22c55e;    /* 绿色 */
-  color: #052e16;
-}
-
-.message-title{
-  font-weight: 600;
-  margin-bottom: 4px;
-  opacity: .9;
-  font-size: 12px;
-}
-.message-time{
-  font-size: 10px;
-  color: #cbd5e1;
-  position: absolute;
-  bottom: -16px;
-  right: 4px;
-}
-
-/* 图片消息 */
-.chat-image{
-  max-width: 240px;
-  max-height: 240px;
-  border-radius: 8px;
-  display: block;
-  box-shadow: 0 5px 20px rgba(0,0,0,.35);
-}
-
-/* ===== 人工/机器状态按钮（如果你的页面有） ===== */
+/* ========== 人工/机器人状态按钮（若使用） ========== */
 .status-btn{
-  height: 36px;
-  min-width: 60px;
-  border: 1px solid #374151;
-  border-radius: 10px;
-  background: #0b0f16;
-  color: #e5e7eb;
-  cursor: pointer;
-  padding: 0 10px;
+  height:44px; min-width:68px; padding:0 12px; border-radius:12px;
+  background:#0b1220; color:var(--text); border:1px solid var(--tool-border);
+  cursor:pointer; transition:all .15s ease;
 }
-.status-btn.online{ background:#10b981; color:#001b14; border-color:#10b981; }
+.status-btn.online{ background:#10b981; color:#021b14; border-color:#10b981; }
 .status-btn.offline{ background:#ef4444; color:#1b0001; border-color:#ef4444; }
