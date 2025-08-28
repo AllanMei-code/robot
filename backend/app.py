@@ -1,3 +1,21 @@
+# --------- 兼容两种启动方式的导入（包/目录）---------
+try:
+    # 包方式：在项目根启动，使用 backend.app:app
+    from .logic import get_bot_reply
+except Exception:
+    try:
+        # 目录方式：cd 到 backend/ 启动，使用 app:app
+        from logic import get_bot_reply
+    except Exception:
+        # 兜底：没有 logic.py 时给一个空实现，保证服务能启动
+        def get_bot_reply(text_zh: str) -> str:
+            return ""
+# ---------------------------------------------------
+
+
+
+
+
 # -*- coding: utf-8 -*-
 import os
 import re
