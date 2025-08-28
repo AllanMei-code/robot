@@ -164,8 +164,10 @@ function initApp() {
     body.className = 'message-body';
     if (isHTML) body.innerHTML = content; else body.textContent = content ?? '';
     const timeDiv = document.createElement('div');
-    timeDiv.className='message-time';
-    timeDiv.textContent = timestamp || new Date().toISOString().replace("T"," ").substring(0,16);
+    timeDiv.className = 'message-time';
+    const rawStamp = timestamp || new Date().toISOString().replace("T", " ").substring(0, 16);
+    timeDiv.textContent = formatTimestampToMDHM(rawStamp); // 显示为 MM/DD HH:mm
+    timeDiv.title = rawStamp; // 悬停显示完整原始时间
     bubble.appendChild(title);
     bubble.appendChild(body);
     bubble.appendChild(timeDiv);
