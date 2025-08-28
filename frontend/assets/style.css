@@ -1,350 +1,249 @@
-/* =========================================
- * 基础样式 + 主题（含 active/disabled & 深浅色）
- * ========================================= */
-
-/* ============ Theme Tokens ============ */
-:root {
-  /* surfaces & borders */
-  --bg: #ffffff;
-  --bg-muted: #f9f9f9;
-  --panel-border: #e5e7eb;
-  --shadow-rgb: 0, 0, 0;
-
-  /* text & icons */
-  --text: #111827;
-  --text-muted: #374151;
-
-  /* primary button */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-active: #1e40af;
-  --on-primary: #ffffff;
-
-  /* neutral icon buttons */
-  --btn-bg: #ffffff;
-  --btn-hover: #f3f4f6;
-  --btn-active: #e5e7eb;
-  --btn-border: #e5e7eb;
-
-  /* message bubbles */
-  --bubble-client-bg: #e6f7ff;
-  --bubble-client-text: #003a8c;
-  --bubble-agent-bg: #fff4e6;
-  --bubble-agent-text: #7a3d00;
-
-  /* status buttons */
-  --online: #10b981;
-  --offline: #ef4444;
-
-  /* disabled */
-  --disabled-bg: #f3f4f6;
-  --disabled-border: #e5e7eb;
-  --disabled-text: #9ca3af;
+/* ===== 基础 ===== */
+:root{
+  /* 可调：背景图透明度（0~1） */
+  --chat-bg-opacity: .25;
 }
 
-[data-theme="dark"] {
-  --bg: #0b1020;
-  --bg-muted: #0f172a;
-  --panel-border: #1f2937;
-  --shadow-rgb: 0, 0, 0;
+*{box-sizing:border-box}
 
-  --text: #e5e7eb;
-  --text-muted: #cbd5e1;
-
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-active: #1d4ed8;
-  --on-primary: #ffffff;
-
-  --btn-bg: #111827;
-  --btn-hover: #1f2937;
-  --btn-active: #374151;
-  --btn-border: #374151;
-
-  --bubble-client-bg: #003a8c;
-  --bubble-client-text: #e6f7ff;
-  --bubble-agent-bg: #7a3d00;
-  --bubble-agent-text: #fff4e6;
-
-  --online: #10b981;
-  --offline: #ef4444;
-
-  --disabled-bg: #1f2937;
-  --disabled-border: #374151;
-  --disabled-text: #6b7280;
-}
-
-/* ===== 基础布局 ===== */
-body {
+body{
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 20px;
-  background: var(--bg);
-  color: var(--text);
+  color: #e5e7eb;                 /* 文本浅灰，适配深色背景 */
+  background: #000;               /* 整体黑色背景 */
+  min-height: 100vh;
 }
 
-.container {
+/* 可选：开启背景图片时给 <body> 加 class="has-chat-bg"，并设置 --chat-bg-image 变量 */
+body.has-chat-bg{ position: relative; }
+body.has-chat-bg::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  background: var(--chat-bg-image) center/cover no-repeat;
+  opacity: var(--chat-bg-opacity);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ===== 布局 ===== */
+.container{
   display: flex;
   gap: 20px;
   height: 90vh;
 }
 
-.panel {
+.panel{
   flex: 1;
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
   padding: 10px;
   display: flex;
   flex-direction: column;
+  background: rgba(17,17,17,.85);     /* 半透明深色面板，搭配背景图也好看 */
+  backdrop-filter: blur(2px);
 }
 
-.message-area {
+.panel h2{
+  margin: 6px 8px 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+/* ===== 消息区（带滚动条） ===== */
+.message-area{
   flex: 1;
   padding: 15px;
   overflow-y: auto;
-  background: var(--bg-muted);
+  background: rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  /* 让滚动条空间稳定，避免出现/消失时抖动 */
+  scrollbar-gutter: stable both-edges;
 }
 
-/* ===== 输入区与表情面板定位 ===== */
-.input-area {
+/* Firefox 滚动条 */
+.message-area{
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #111827; /* 拇指/轨道 */
+}
+/* WebKit 滚动条 */
+.message-area::-webkit-scrollbar{ width: 10px; height: 10px; }
+.message-area::-webkit-scrollbar-thumb{
+  background: #6b7280;
+  border-radius: 8px;
+}
+.message-area::-webkit-scrollbar-thumb:hover{
+  background: #9ca3af;
+}
+.message-area::-webkit-scrollbar-track{
+  background: #111827;
+  border-radius: 8px;
+}
+
+/* ===== 输入区 & 表情面板定位 ===== */
+.input-area{
   position: relative;
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.input-area input {
+.input-area input[type="text"]{
   flex: 1;
-  padding: 8px;
-  border: 1px solid var(--panel-border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-}
-
-/* 表情面板（默认隐藏，按钮点击后显示/隐藏） */
-.emoji-panel {
-  position: absolute;
-  bottom: 48px;
-  left: 0;
-  background: var(--bg);
-  border: 1px solid var(--panel-border);
+  padding: 10px 12px;
+  border: 1px solid #374151;
   border-radius: 8px;
-  padding: 8px;
-  box-shadow: 0 2px 6px rgba(var(--shadow-rgb),0.24);
+  background: #0b0f16;
+  color: #e5e7eb;
+  outline: none;
+}
+.input-area input[type="text"]::placeholder{ color: #9ca3af; }
+
+/* 表情面板 */
+.emoji-panel{
+  position: absolute;
+  bottom: 46px; /* 高度 = 工具按钮高度 + 间距 */
+  left: 0;
   display: none;
+  background: #0b0f16;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
   z-index: 10;
 }
-.emoji-panel span {
+.emoji-panel span{
   cursor: pointer;
   font-size: 20px;
-  margin: 4px;
   display: inline-block;
+  margin: 4px;
+  transition: transform .08s ease;
 }
+.emoji-panel span:hover{ transform: scale(1.15); }
 
-/* ===== 三个图标统一外观与尺寸（📷 / 😊 / ✈️）===== */
-/* 基础容器：统一 40×40，圆角、边框、对齐、currentColor 传递给文本 & SVG */
-.icon-btn,       /* 摄像头（label） */
-.emoji-btn,      /* 表情（button） */
-.send-btn {      /* 发送（button） */
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+/* ===== 工具栏按钮（统一尺寸） ===== */
+.tool-btn,
+#client-send,
+#agent-send,
+label[for="client-file"],
+label[for="agent-file"]{
+  width: 36px;
+  height: 36px;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  background: #0b0f16;
+  color: #e5e7eb;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--btn-border);
-  border-radius: 8px;
-  background: var(--btn-bg);
-  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
-  padding: 0;
-  transition: background .15s ease, border-color .15s ease, transform .05s ease;
-}
-
-/* 文字符号（📷、😊）大小 */
-.icon-btn,
-.emoji-btn {
-  font-size: 22px;
+  font-size: 18px; /* emoji / 摄像头图标字号 */
   line-height: 1;
+  padding: 0;
+  transition: background .15s ease, border-color .15s ease, transform .05s ease, color .15s ease;
+}
+.tool-btn:hover,
+#client-send:hover,
+#agent-send:hover{
+  background: #111827;
+  border-color: #4b5563;
+}
+.tool-btn:active,
+#client-send:active,
+#agent-send:active{
+  transform: translateY(1px);
 }
 
-/* 规范 SVG 尺寸与颜色（相机若改成 SVG 也适配） */
-.send-btn svg,
-.icon-btn svg {
-  width: 22px;
-  height: 22px;
-  display: block;
-  fill: currentColor; /* 小飞机/相机等 SVG 继承按钮文字色 */
+/* 发送按钮主色（默认蓝），悬停时变黑 —— 需求 #1 */
+.tool-btn.primary,
+#client-send.primary,
+#agent-send.primary{
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+.tool-btn.primary:hover,
+#client-send.primary:hover,
+#agent-send.primary:hover{
+  background: #000;       /* ← 悬停时纯黑 */
+  border-color: #000;
+  color: #fff;
 }
 
-/* 图标按钮：hover/active/disabled */
-.icon-btn:hover,
-.emoji-btn:hover {
-  background: var(--btn-hover);
-}
-.icon-btn:active,
-.emoji-btn:active {
-  background: var(--btn-active);
-  transform: translateY(0.5px);
-}
-.icon-btn:disabled,
-.emoji-btn:disabled,
-.icon-btn.is-disabled,
-.emoji-btn.is-disabled {
-  background: var(--disabled-bg);
-  border-color: var(--disabled-border);
-  color: var(--disabled-text);
-  cursor: not-allowed;
-  opacity: 0.8;
-  pointer-events: none;
-}
+/* 确保 SVG 小飞机使用当前文字色，避免“看不到”问题 */
+.tool-btn svg,
+#client-send svg,
+#agent-send svg{ width: 18px; height: 18px; display: block; }
+.tool-btn svg path,
+#client-send svg path,
+#agent-send svg path{ fill: currentColor; }
 
-/* 发送按钮主色（可见度与区分度） */
-.send-btn {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--on-primary);         /* 让 SVG/文本跟随变白 */
-}
-.send-btn:hover {
-  background: #000000;   /* 黑色背景 */
-  border-color: #000000; /* 边框也改成黑色 */
-  color: #ffffff;        /* 保持文字/小飞机图标为白色 */
-}
-.send-btn:active {
-  background: var(--primary-active);
-  border-color: var(--primary-active);
-  transform: translateY(0.5px);
-}
-.send-btn:disabled,
-.send-btn.is-disabled {
-  background: color-mix(in oklab, var(--primary) 40%, var(--disabled-bg));
-  border-color: color-mix(in oklab, var(--primary) 40%, var(--disabled-border));
-  color: color-mix(in oklab, var(--on-primary) 70%, var(--disabled-text));
-  cursor: not-allowed;
-  opacity: 0.9;
-  pointer-events: none;
-}
+/* 隐藏原生 file input */
+input[type="file"]#client-file,
+input[type="file"]#agent-file{ display: none; }
 
-/* 聚焦可见（键盘可达性） */
-.icon-btn:focus-visible,
-.emoji-btn:focus-visible,
-.send-btn:focus-visible,
-.status-btn:focus-visible,
-.input-area input:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--primary) 70%, white);
-  outline-offset: 2px;
-}
+/* ===== 消息气泡 ===== */
+.message-wrapper{ display:flex; margin: 10px 0; }
+.message-wrapper.left{  justify-content: flex-start; }
+.message-wrapper.right{ justify-content: flex-end; }
 
-/* 隐藏原生 file input（点击 label 触发） */
-#client-file,
-#agent-file {
-  display: none;
-}
-
-/* ===== 消息样式 ===== */
-.message-wrapper {
-  display: flex;
-  margin: 8px 0;
-}
-.message-wrapper.left  { justify-content: flex-start; }
-.message-wrapper.right { justify-content: flex-end; }
-
-.message-content {
+.message-content{
   max-width: 70%;
   padding: 10px 12px;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(var(--shadow-rgb),.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
   word-wrap: break-word;
+  position: relative;
 }
-.message-content.client { background: var(--bubble-client-bg); color: var(--bubble-client-text); }
-.message-content.agent  { background: var(--bubble-agent-bg);  color: var(--bubble-agent-text);  }
 
-.message-title {
+/* 两端颜色（适配深色背景） */
+.message-content.client{
+  background: #0ea5e9;    /* 青蓝 */
+  color: #001219;
+}
+.message-content.agent{
+  background: #22c55e;    /* 绿色 */
+  color: #052e16;
+}
+
+.message-title{
   font-weight: 600;
   margin-bottom: 4px;
-  opacity: .8;
+  opacity: .9;
+  font-size: 12px;
+}
+.message-time{
+  font-size: 10px;
+  color: #cbd5e1;
+  position: absolute;
+  bottom: -16px;
+  right: 4px;
 }
 
 /* 图片消息 */
-.chat-image {
+.chat-image{
   max-width: 240px;
   max-height: 240px;
   border-radius: 8px;
   display: block;
-  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), .25);
-  border: 1px solid var(--panel-border);
-  background: var(--bg);
+  box-shadow: 0 5px 20px rgba(0,0,0,.35);
 }
 
-/* ===== 状态按钮 ===== */
-.status-btn {
-  height: 40px;
+/* ===== 人工/机器状态按钮（如果你的页面有） ===== */
+.status-btn{
+  height: 36px;
   min-width: 60px;
-  border: 1px solid var(--btn-border);
-  border-radius: 8px;
-  background: var(--btn-bg);
-  color: var(--text);
+  border: 1px solid #374151;
+  border-radius: 10px;
+  background: #0b0f16;
+  color: #e5e7eb;
   cursor: pointer;
-  padding: 0 8px;
-  transition: background .15s ease, border-color .15s ease, transform .05s ease;
+  padding: 0 10px;
 }
-.status-btn:hover { background: var(--btn-hover); }
-.status-btn:active { background: var(--btn-active); transform: translateY(0.5px); }
-
-.status-btn.online {
-  background: var(--online);
-  color: #fff;
-  border-color: var(--online);  /* 上线=绿色，按钮文案：下线 */
-}
-.status-btn.offline {
-  background: var(--offline);
-  color: #fff;
-  border-color: var(--offline); /* 下线=红色，按钮文案：上线 */
-}
-.status-btn:disabled,
-.status-btn.is-disabled {
-  background: var(--disabled-bg);
-  border-color: var(--disabled-border);
-  color: var(--disabled-text);
-  cursor: not-allowed;
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-/* ===== 减少动画（尊重系统设置） ===== */
-@media (prefers-reduced-motion: reduce) {
-  .icon-btn, .emoji-btn, .send-btn, .status-btn {
-    transition: none;
-  }
-}
-/* =========================================
- * 其他补充样式（滚动条、表单元素等）
- * ========================================= */
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-}
-
-/* 表单元素样式 */
-input, textarea, select {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 8px;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--bg);
-}
-input:focus, textarea:focus, select:focus {
-  border-color: var(--primary);
-  outline: none;
-}
+.status-btn.online{ background:#10b981; color:#001b14; border-color:#10b981; }
+.status-btn.offline{ background:#ef4444; color:#1b0001; border-color:#ef4444; }
