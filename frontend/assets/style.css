@@ -47,7 +47,7 @@
   --scrollbar-thumb:    #334155;
 
   /* 背景装饰（LOGO + 渐变光晕） */
-  --bg-logo:            url("favicon.png"); /* 放到 assets/ 目录，或换成你的路径 */
+  --bg-logo:            url(""); /* 放到 assets/ 目录，或换成你的路径 */
   --bg-grad1:           radial-gradient(1100px 520px at 20% -10%, rgba(59,130,246,.08), transparent 60%);
   --bg-grad2:           radial-gradient(900px 460px at 120% 25%, rgba(16,185,129,.08), transparent 60%);
 }
