@@ -16,9 +16,7 @@ def get_bot_reply(message: str) -> str:
     if "bonjour" in msg_lower or "你好" in msg_lower:
         print("[机器人命中问候] 返回欢迎语")
         return "Bonjour, bienvenue chez gamesawa，Comment puis-je vous aider ?"
-    if "*" in msg_lower:
-        print("[机器人命中星号] 返回详细描述提示")
-        return "Veuillez décrire en détail le problème que vous avez rencontré"
+    
     if "j'ai effectué un retrait que je n'ai pas encore reçu" in msg_lower or "我已申请提现但尚未到账" in msg_lower:
         print("[机器人命中提现未到账] 返回支付渠道不稳定")
         return "En raison de l'instabilité des canaux de paiement, veuillez patienter"
