@@ -144,3 +144,29 @@ input[type="file"]#client-file,input[type="file"]#agent-file{ display:none; }
 
 .message-content{ margin-bottom:22px; } /* 给时间徽标留空间 */
 .message-time{ white-space: nowrap; }   /* 避免在连字符处换行 */
+
+
+/* 上线/下线切换按钮 */
+.status-btn{
+  height: 44px;
+  min-width: 70px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all .15s ease;
+  font-weight: 600;
+}
+.status-btn:hover{ filter: brightness(1.08); }
+.status-btn.online{
+  background: #10b981;           /* 上线：绿色 */
+  border-color: #10b981;
+  color: #072a22;
+}
+.status-btn.offline{
+  background: #ef4444;           /* 下线：红色 */
+  border-color: #ef4444;
+  color: #2a0707;
+}

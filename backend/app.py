@@ -15,7 +15,7 @@ import requests
 # 你的业务逻辑（可空实现）
 from logic import get_bot_reply
 
-# 学习存储
+# 学习存储（需提供 bot_store.py）
 from bot_store import init_db, log_message, upsert_qa, retrieve_best
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -117,9 +117,9 @@ init_db()
 
 # ===== 选项三：按会话状态 =====
 INACTIVITY_SEC = int(os.getenv("BOT_INACTIVITY_SEC", "30"))   # 无人响应阈值（秒）
-SUPPRESS_WINDOW_SEC = int(os.getenv("BOT_SUPPRESS_SEC", "5")) # 打字抑制窗口（秒）
+SUPPRESS_WINDOW_SEC = int(os.getenv("BOT_SUPPRESS_SEC", "5"))  # 打字抑制窗口（秒）
 
-# 会话状态字典
+# 会话状态
 session_info = {}                         # sid -> {'role': 'agent'|'client', 'cid': str}
 manual_online_by_cid = {}                 # cid -> bool (True=人工上线/不介入; False=下线/介入)
 suppress_until_by_cid = {}                # cid -> epoch 秒（客服打字抑制到期时间）
@@ -127,9 +127,19 @@ last_agent_activity_by_cid = {}           # cid -> epoch 秒（客服上次活�
 last_client_by_cid = {}                   # cid -> {'fr','zh','ts'}  用于自动学习
 last_client_msg_ts_by_cid = {}            # cid -> 最近一条客户消息的 token (timestamp)
 
+# ---- Helpers ----
 def _cid_of_current():
     info = session_info.get(request.sid, {})
     return info.get('cid', 'default')
+
+def _cid_of_current_or_payload(data=None):
+    if isinstance(data, dict) and data.get('cid'):
+        return data['cid']
+    return _cid_of_current()
+
+def _require_agent():
+    info = session_info.get(request.sid, {})
+    return info.get('role') == 'agent'
 
 def _manual_online(cid):
     # 默认为 True（人工在线）
@@ -172,6 +182,7 @@ def handle_connect():
         join_room(f"{cid}:clients")
 
     logging.info(f"{role} 连接成功: sid={request.sid}, cid={cid}")
+    # 初始推送状态到这个会话房间
     broadcast_agent_status(cid)
 
 @socketio.on('disconnect')
@@ -182,16 +193,26 @@ def handle_disconnect():
 # ===== 手动切换：上线/下线（按会话）=====
 @socketio.on('agent_set_status')
 def handle_agent_set_status(data):
-    cid = _cid_of_current()
+    if not _require_agent():
+        logging.warning("ignored agent_set_status from non-agent sid=%s", request.sid)
+        return
+
+    cid = _cid_of_current_or_payload(data)
     want_online = bool((data or {}).get('online', True))
     _set_manual_online(cid, want_online)
     logging.info(f"[人工切换][cid={cid}] online={want_online}")
     broadcast_agent_status(cid)
 
+    # 切到“下线”时，若有一条待处理客户消息，立刻触发机器人兜底
+    if not want_online:
+        _maybe_trigger_immediate_bot(cid)
+
 # ===== 客服正在输入（按会话，抑制机器人）=====
 @socketio.on('agent_typing')
-def handle_agent_typing(_data=None):
-    cid = _cid_of_current()
+def handle_agent_typing(data=None):
+    if not _require_agent():
+        return
+    cid = _cid_of_current_or_payload(data)
     suppress_until_by_cid[cid] = time.time() + SUPPRESS_WINDOW_SEC
     _update_agent_activity(cid)
 
@@ -245,6 +266,20 @@ def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
     socketio.emit('new_message', payload, room=f"{cid}:clients")
     log_message("bot", "zh", reply_zh, conv_id=cid)
     log_message("bot", "fr", reply_fr, conv_id=cid)
+
+def _maybe_trigger_immediate_bot(cid):
+    """切到下线时，若有刚收到且尚未被人工响应的客户消息，立刻触发兜底。"""
+    token = last_client_msg_ts_by_cid.get(cid, 0)
+    last  = last_client_by_cid.get(cid, None)
+    if not token or not last:
+        return
+    # 如果客服在该客户消息之后有活动，就不触发
+    if last_agent_activity_by_cid.get(cid, 0) > token:
+        return
+    # “回拨”token，使延时任务认为已超时，从而立即执行
+    socketio.start_background_task(
+        _delayed_bot_reply, cid, token - INACTIVITY_SEC - 0.1, last["fr"], last["zh"]
+    )
 
 # ===== 客户端消息（按会话）=====
 @socketio.on('client_message')
@@ -322,7 +357,7 @@ def handle_client_message(data):
         log_message("bot", "zh", reply_zh, conv_id=cid)
         log_message("bot", "fr", reply_fr, conv_id=cid)
     else:
-        # 人工在线：30s 后再检查
+        # 人工在线：30s 后再检查（无人响应则自动介入）
         socketio.start_background_task(_delayed_bot_reply, cid, token, msg_fr, msg_zh)
 
 # ===== 客服端消息（按会话）=====
@@ -360,7 +395,7 @@ def handle_agent_message(data):
     log_message("agent", "zh", msg, conv_id=cid)
     log_message("agent", target_lang, translated, conv_id=cid)
 
-    # 自动学习（最近客户问 → 本次客服答）
+    # 自动学习（最近客户问 -> 本次客服答），3分钟内有效
     try:
         lc = last_client_by_cid.get(cid, {})
         if lc.get("zh") and (time.time() - lc.get("ts", 0) < 180):

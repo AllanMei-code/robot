@@ -2,104 +2,230 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>客服系统测试 · 深色主题</title>
-  <!-- 加版本号避免缓存 -->
-  <link rel="stylesheet" href="assets/style.css?v=2025-08-28-02" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>客服系统测试</title>
+
+  <!-- 深色样式（你的 assets/style.css 应已包含深色主题与统一按钮尺寸） -->
+  <link rel="stylesheet" href="assets/style.css?v=2025-08-28-07"/>
+
+  <style>
+    /* 仅补少量通用样式，主体请放在 assets/style.css */
+    body {
+      margin: 0;
+      background: #0b1220; /* 深色背景 */
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    .container {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    .panel {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .panel h2 {
+      margin: 0;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e293b;
+      background: #0b1220;
+      font-size: 14px;
+      letter-spacing: .5px;
+      color: #93c5fd;
+    }
+    .message-area {
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 transparent;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(56,189,248,.06), transparent 60%),
+        radial-gradient(1000px 500px at 120% 20%, rgba(16,185,129,.06), transparent 60%),
+        url("assets/bg_logo.png") center/300px auto no-repeat,
+        #0f172a;
+      background-blend-mode: screen, screen, normal, normal;
+    }
+    .message-area::-webkit-scrollbar { width: 8px; }
+    .message-area::-webkit-scrollbar-thumb {
+      background: #334155; border-radius: 8px;
+    }
+
+    .input-area {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px; border-top: 1px solid #1e293b; background: #0b1220;
+    }
+    .input-area input[type="text"]{
+      flex: 1; min-width: 0;
+      height: 44px; padding: 0 12px;
+      background: #0f172a; color: #e5e7eb;
+      border: 1px solid #334155; border-radius: 12px;
+      outline: none;
+    }
+    .input-area input[type="text"]::placeholder { color: #64748b; }
+
+    /* 统一工具按钮尺寸（相机/表情/发送） */
+    .tool-btn,
+    #client-send, #agent-send,
+    label[for="client-file"], label[for="agent-file"]{
+      width: 44px; height: 44px;
+      border: 1px solid #334155; border-radius: 12px;
+      background: #0f172a; color: #e5e7eb;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none; padding: 0;
+      transition: all .15s ease;
+    }
+    .tool-btn:hover,
+    #client-send:hover, #agent-send:hover,
+    label[for="client-file"]:hover, label[for="agent-file"]:hover{
+      background: #000; border-color: #475569;
+    }
+    /* 发送主按钮 */
+    .primary{ background:#2563eb; border-color:#2563eb; }
+    .primary:hover{ background:#000; color:#fff; }
+
+    /* 上线/下线切换按钮 */
+    .status-btn{
+      height: 44px; min-width: 70px; padding: 0 12px;
+      border-radius: 12px; border: 1px solid #334155;
+      background: #0f172a; color: #e5e7eb;
+      cursor: pointer; transition: all .15s ease;
+      font-weight: 600;
+    }
+    .status-btn.online{  background:#10b981; border-color:#10b981; color:#021b14; }
+    .status-btn.offline{ background:#ef4444; border-color:#ef4444; color:#1b0001; }
+
+    /* 消息气泡 */
+    .message-wrapper{ display:flex; margin: 8px 0; }
+    .left{ justify-content:flex-start; }
+    .right{ justify-content:flex-end; }
+    .message-content{
+      position: relative;
+      max-width: 72%;
+      padding: 10px 12px; border-radius: 12px;
+      background: #111827; color: #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    }
+    .message-content.client{ background: #0a2536; }
+    .message-content.agent{  background: #1f1637; }
+    .message-title{ font-size: 12px; opacity: .8; margin-bottom: 4px; }
+    .message-time{
+      position:absolute; right:6px; bottom:-18px;
+      font-size:11px; color:#cbd5e1;
+      background: rgba(15,23,42,.55);
+      border: 1px solid rgba(148,163,184,.25);
+      padding: 2px 6px; border-radius: 6px;
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+      backdrop-filter: blur(2px);
+    }
+    .message-content{ margin-bottom: 22px; }
+
+    .chat-image{
+      max-width: 220px; max-height: 220px; border-radius: 10px; display:block;
+    }
+
+    /* Emoji 面板 */
+    .emoji-panel{
+      display:none; position:absolute; bottom:56px; right:10px;
+      background:#0f172a; border:1px solid #334155; border-radius: 12px;
+      padding: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      z-index: 20;
+    }
+    .emoji-panel span{
+      cursor:pointer; font-size:22px; margin:4px; display:inline-block;
+    }
+  </style>
 </head>
 
-<!--
-  1) 深色主题：class="theme-dark"
-  2) 启用背景水印：class 再加 has-chat-bg，并在 style 里设置 --chat-bg-image
-     没有 logo 时可去掉 has-chat-bg（仍是深色背景）
--->
-<body class="theme-dark has-chat-bg"
-      style="--chat-bg-image:url('assets/gamesawa-logo.svg'); --chat-bg-opacity:.22"
-      data-role="client">
-
+<body>
   <div class="container">
-    <!-- 客户端 -->
+    <!-- 客户界面 -->
     <div id="client-panel" class="panel">
       <h2>客户界面</h2>
-
       <div class="message-area" id="client-messages"></div>
-
       <div class="input-area">
         <input type="text" id="client-input" placeholder="输入消息..." />
-
-        <!-- 上传图片 -->
-        <label for="client-file" class="tool-btn" title="上传图片">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M20 5h-3.2l-1.2-2H8.4L7.2 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-8 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/>
+        <label for="client-file" class="tool-btn" title="上传图片" aria-label="上传图片">
+          <!-- 相机图标 -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="1.4"/>
           </svg>
         </label>
         <input type="file" id="client-file" accept="image/*" style="display:none;" />
-
-        <!-- 表情 -->
-        <button id="client-emoji-btn" class="tool-btn" title="表情">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm-3 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm-7 6a5.5 5.5 0 0 0 10 0h-2a3.5 3.5 0 0 1-6 0H8Z"/>
+        <button id="client-emoji-btn" class="tool-btn" title="表情" aria-label="表情">
+          <!-- 表情图标 -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="9" cy="10" r="1" fill="currentColor"/>
+            <circle cx="15" cy="10" r="1" fill="currentColor"/>
+            <path d="M8 14c1 2 7 2 8 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
         </button>
-        <div id="client-emoji-panel" class="emoji-panel" style="display:none;">
+        <div id="client-emoji-panel" class="emoji-panel">
           <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
           <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
         </div>
-
-        <!-- 发送 -->
-        <button id="client-send" class="tool-btn primary" title="发送">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M2 21 23 12 2 3v7l15 2-15 2v7z"/>
+        <button id="client-send" class="tool-btn primary" title="发送" aria-label="发送">
+          <!-- 纸飞机 -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2 12L21 3l-6.5 18-3.5-7-9-2z"/>
           </svg>
         </button>
       </div>
     </div>
 
-    <!-- 客服端 -->
+    <!-- 客服界面 -->
     <div id="agent-panel" class="panel">
       <h2>客服界面</h2>
-
       <div class="message-area" id="agent-messages"></div>
-
       <div class="input-area">
         <input type="text" id="agent-input" placeholder="输入回复..." />
-
-        <!-- 上传图片 -->
-        <label for="agent-file" class="tool-btn" title="上传图片">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M20 5h-3.2l-1.2-2H8.4L7.2 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-8 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/>
+        <label for="agent-file" class="tool-btn" title="上传图片" aria-label="上传图片">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="1.4"/>
           </svg>
         </label>
         <input type="file" id="agent-file" accept="image/*" style="display:none;" />
-
-        <!-- 表情 -->
-        <button id="agent-emoji-btn" class="tool-btn" title="表情">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm-3 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm6 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm-7 6a5.5 5.5 0 0 0 10 0h-2a3.5 3.5 0 0 1-6 0H8Z"/>
+        <button id="agent-emoji-btn" class="tool-btn" title="表情" aria-label="表情">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="9" cy="10" r="1" fill="currentColor"/>
+            <circle cx="15" cy="10" r="1" fill="currentColor"/>
+            <path d="M8 14c1 2 7 2 8 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
         </button>
-        <div id="agent-emoji-panel" class="emoji-panel" style="display:none;">
+        <div id="agent-emoji-panel" class="emoji-panel">
           <span>😀</span><span>😂</span><span>❤️</span><span>👍</span>
           <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
         </div>
 
-        <!-- （可选）人工/机器人切换按钮：如需显示请取消注释
+        <!-- ✅ 上线/下线切换 -->
         <button id="agent-online-toggle" class="status-btn online" title="人工上线/下线">下线</button>
-        -->
 
-        <!-- 发送 -->
-        <button id="agent-send" class="tool-btn primary" title="发送">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M2 21 23 12 2 3v7l15 2-15 2v7z"/>
+        <button id="agent-send" class="tool-btn primary" title="发送" aria-label="发送">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2 12L21 3l-6.5 18-3.5-7-9-2z"/>
           </svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 脚本 -->
+  <!-- socket.io -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <script src="js/config.js?v=2025-08-28-02"></script>
-  <script src="js/app.js?v=2025-08-28-02"></script>
+  <!-- 你的配置脚本（会触发 configReady 事件） -->
+  <script src="js/config.js?v=2025-08-28-07"></script>
+  <script src="js/app.js?v=2025-08-28-07"></script>
 </body>
 </html>
