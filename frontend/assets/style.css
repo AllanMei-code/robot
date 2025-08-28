@@ -1,8 +1,86 @@
+/* =========================================
+ * 基础样式 + 主题（含 active/disabled & 深浅色）
+ * ========================================= */
+
+/* ============ Theme Tokens ============ */
+:root {
+  /* surfaces & borders */
+  --bg: #ffffff;
+  --bg-muted: #f9f9f9;
+  --panel-border: #e5e7eb;
+  --shadow-rgb: 0, 0, 0;
+
+  /* text & icons */
+  --text: #111827;
+  --text-muted: #374151;
+
+  /* primary button */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1e40af;
+  --on-primary: #ffffff;
+
+  /* neutral icon buttons */
+  --btn-bg: #ffffff;
+  --btn-hover: #f3f4f6;
+  --btn-active: #e5e7eb;
+  --btn-border: #e5e7eb;
+
+  /* message bubbles */
+  --bubble-client-bg: #e6f7ff;
+  --bubble-client-text: #003a8c;
+  --bubble-agent-bg: #fff4e6;
+  --bubble-agent-text: #7a3d00;
+
+  /* status buttons */
+  --online: #10b981;
+  --offline: #ef4444;
+
+  /* disabled */
+  --disabled-bg: #f3f4f6;
+  --disabled-border: #e5e7eb;
+  --disabled-text: #9ca3af;
+}
+
+[data-theme="dark"] {
+  --bg: #0b1020;
+  --bg-muted: #0f172a;
+  --panel-border: #1f2937;
+  --shadow-rgb: 0, 0, 0;
+
+  --text: #e5e7eb;
+  --text-muted: #cbd5e1;
+
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-active: #1d4ed8;
+  --on-primary: #ffffff;
+
+  --btn-bg: #111827;
+  --btn-hover: #1f2937;
+  --btn-active: #374151;
+  --btn-border: #374151;
+
+  --bubble-client-bg: #003a8c;
+  --bubble-client-text: #e6f7ff;
+  --bubble-agent-bg: #7a3d00;
+  --bubble-agent-text: #fff4e6;
+
+  --online: #10b981;
+  --offline: #ef4444;
+
+  --disabled-bg: #1f2937;
+  --disabled-border: #374151;
+  --disabled-text: #6b7280;
+}
+
 /* ===== 基础布局 ===== */
 body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 20px;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .container {
@@ -13,7 +91,7 @@ body {
 
 .panel {
   flex: 1;
-  border: 1px solid #ccc;
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   padding: 10px;
   display: flex;
@@ -24,7 +102,7 @@ body {
   flex: 1;
   padding: 15px;
   overflow-y: auto;
-  background: #f9f9f9;
+  background: var(--bg-muted);
 }
 
 /* ===== 输入区与表情面板定位 ===== */
@@ -38,8 +116,10 @@ body {
 .input-area input {
   flex: 1;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--panel-border);
   border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* 表情面板（默认隐藏，按钮点击后显示/隐藏） */
@@ -47,11 +127,11 @@ body {
   position: absolute;
   bottom: 48px;
   left: 0;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
   border-radius: 8px;
   padding: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb),0.24);
   display: none;
   z-index: 10;
 }
@@ -73,19 +153,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--btn-border);
   border-radius: 8px;
-  background: #fff;
-  color: #374151;
+  background: var(--btn-bg);
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
   padding: 0;
-}
-
-/* 悬停态：通用图标按钮为浅灰，发送按钮单独定义（见下） */
-.icon-btn:hover,
-.emoji-btn:hover {
-  background: #f3f4f6;
+  transition: background .15s ease, border-color .15s ease, transform .05s ease;
 }
 
 /* 文字符号（📷、😊）大小 */
@@ -104,15 +179,61 @@ body {
   fill: currentColor; /* 小飞机/相机等 SVG 继承按钮文字色 */
 }
 
+/* 图标按钮：hover/active/disabled */
+.icon-btn:hover,
+.emoji-btn:hover {
+  background: var(--btn-hover);
+}
+.icon-btn:active,
+.emoji-btn:active {
+  background: var(--btn-active);
+  transform: translateY(0.5px);
+}
+.icon-btn:disabled,
+.emoji-btn:disabled,
+.icon-btn.is-disabled,
+.emoji-btn.is-disabled {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 /* 发送按钮主色（可见度与区分度） */
 .send-btn {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #fff;         /* 让 SVG/文本跟随变白 */
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);         /* 让 SVG/文本跟随变白 */
 }
 .send-btn:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+.send-btn:active {
+  background: var(--primary-active);
+  border-color: var(--primary-active);
+  transform: translateY(0.5px);
+}
+.send-btn:disabled,
+.send-btn.is-disabled {
+  background: color-mix(in oklab, var(--primary) 40%, var(--disabled-bg));
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--disabled-border));
+  color: color-mix(in oklab, var(--on-primary) 70%, var(--disabled-text));
+  cursor: not-allowed;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* 聚焦可见（键盘可达性） */
+.icon-btn:focus-visible,
+.emoji-btn:focus-visible,
+.send-btn:focus-visible,
+.status-btn:focus-visible,
+.input-area input:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 70%, white);
+  outline-offset: 2px;
 }
 
 /* 隐藏原生 file input（点击 label 触发） */
@@ -133,11 +254,11 @@ body {
   max-width: 70%;
   padding: 10px 12px;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb),.08);
   word-wrap: break-word;
 }
-.message-content.client { background: #e6f7ff; color: #003a8c; }
-.message-content.agent  { background: #fff4e6; color: #7a3d00; }
+.message-content.client { background: var(--bubble-client-bg); color: var(--bubble-client-text); }
+.message-content.agent  { background: var(--bubble-agent-bg);  color: var(--bubble-agent-text);  }
 
 .message-title {
   font-weight: 600;
@@ -151,25 +272,78 @@ body {
   max-height: 240px;
   border-radius: 8px;
   display: block;
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), .25);
+  border: 1px solid var(--panel-border);
+  background: var(--bg);
 }
 
 /* ===== 状态按钮 ===== */
 .status-btn {
   height: 40px;
   min-width: 60px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--btn-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--btn-bg);
+  color: var(--text);
   cursor: pointer;
   padding: 0 8px;
+  transition: background .15s ease, border-color .15s ease, transform .05s ease;
 }
+.status-btn:hover { background: var(--btn-hover); }
+.status-btn:active { background: var(--btn-active); transform: translateY(0.5px); }
+
 .status-btn.online {
-  background: #10b981;
+  background: var(--online);
   color: #fff;
-  border-color: #10b981; /* 上线=绿色，按钮文案：下线 */
+  border-color: var(--online);  /* 上线=绿色，按钮文案：下线 */
 }
 .status-btn.offline {
-  background: #ef4444;
+  background: var(--offline);
   color: #fff;
-  border-color: #ef4444; /* 下线=红色，按钮文案：上线 */
+  border-color: var(--offline); /* 下线=红色，按钮文案：上线 */
+}
+.status-btn:disabled,
+.status-btn.is-disabled {
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* ===== 减少动画（尊重系统设置） ===== */
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn, .emoji-btn, .send-btn, .status-btn {
+    transition: none;
+  }
+}
+/* =========================================
+ * 其他补充样式（滚动条、表单元素等）
+ * ========================================= */
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+/* 表单元素样式 */
+input, textarea, select {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+  outline: none;
 }
