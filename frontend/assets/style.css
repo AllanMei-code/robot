@@ -170,3 +170,38 @@ input[type="file"]#client-file,input[type="file"]#agent-file{ display:none; }
   border-color: #ef4444;
   color: #2a0707;
 }
+/* ===== 可读性兜底：强制气泡文本高对比 ===== */
+.message-content { 
+  mix-blend-mode: normal;           /* 避免受到父层背景混合的影响 */
+  background: #172136;              /* 通用底色（稍亮） */
+  color: #eaf2ff !important;
+}
+
+.message-content.client { 
+  background: #0f3a5a;              /* 客户端气泡：深蓝青，提升亮度 */
+}
+.message-content.agent  { 
+  background: #2a2158;              /* 客服端气泡：深紫，提升亮度 */
+}
+
+/* 标题与正文都强制高对比 */
+.message-content .message-title,
+.message-content .message-body {
+  color: #eaf2ff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,.25); /* 轻微阴影提高阅读性 */
+  font-weight: 500;
+}
+
+/* 时间徽标也稍提亮一点 */
+.message-time{
+  color:#e2e8f0 !important;
+  background: rgba(15,23,42,.7) !important;
+  border-color: rgba(148,163,184,.35) !important;
+}
+
+/* 若有其它全局颜色干扰，兜底清理 */
+.message-content * {
+  mix-blend-mode: normal !important;
+}
