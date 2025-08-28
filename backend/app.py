@@ -12,17 +12,7 @@ GameSawa 实时客服后端 (Flask + Flask-SocketIO)
 - 知识检索：优先 bot_store.FTS5，失败回退 LIKE（见 bot_store.py）
 - 规则/模板/礼貌短句：policy / templates_kb / responses（可空实现）
 
-目录结构（示例）：
-robot/
- ├─ backend/
- │   ├─ app.py              ← 本文件
- │   ├─ bot_store.py
- │   ├─ policy.py
- │   ├─ logic.py
- │   ├─ responses.py
- │   └─ templates_kb.py
- └─ frontend/
-     └─ index.html
+
 """
 
 from __future__ import annotations

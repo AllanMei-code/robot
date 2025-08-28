@@ -1,5 +1,6 @@
 # policy.py
 import re, requests, logging
+from typing import Optional
 
 ALLOWED_TOPICS = [
     "registration", "login", "deposit", "withdraw", "promo", "rules", "security"
