@@ -95,6 +95,7 @@ body{
 .input-area{
   display: flex; align-items: center; gap: 8px;
   padding: 10px; border-top: 1px solid var(--panel-border); background: #0B0F14;
+  position: relative;           /* ← 关键：作为定位容器 */
 }
 .input-area input[type="text"]{
   flex: 1; min-width: 0; height: 44px; padding: 0 12px;
@@ -212,3 +213,14 @@ input[type="file"]#agent-file{ display:none; }
 
 /* 保险：避免子元素被混合模式影响 */
 .message-content *{ mix-blend-mode: normal !important; }
+
+
+
+/* 统一两端 emoji 面板的锚点位置（靠输入区右上） */
+.input-area .emoji-panel{
+  position: absolute;
+  right: 10px;                  /* 距离输入区右边的间距 */
+  bottom: 56px;                 /* 在输入区上方悬停的高度 */
+  left: auto;                   /* 避免受旧样式影响 */
+  z-index: 20;                  /* 确保浮在上面 */
+}
