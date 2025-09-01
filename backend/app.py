@@ -246,7 +246,7 @@ def handle_client_message(data):
     msg_fr = (msg_fr or "").strip()
     if not msg_fr:
         return
-
+    
     # 统一用 auto → zh，容错多语言
     msg_zh = safe_translate(msg_fr, target="zh", source="auto")
 
