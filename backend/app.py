@@ -77,6 +77,12 @@ LIBRE_ENDPOINTS = [
     "https://libretranslate.com/translate",
 ]
 
+# 允许通过环境变量覆盖翻译端点（逗号分隔）
+_env_eps = os.getenv("LIBRE_ENDPOINTS", "").strip()
+if _env_eps:
+    LIBRE_ENDPOINTS = [u.strip() for u in _env_eps.split(",") if u.strip()]
+    logging.info("[翻译配置] 使用环境端点 LIBRE_ENDPOINTS=%s", LIBRE_ENDPOINTS)
+
 def safe_translate_old(text: str, target: str, source: str = "auto", timeout: float = 5.0) -> str:
     """
     使用多个 LibreTranslate 端点级联翻译。
@@ -90,6 +96,8 @@ def safe_translate_old(text: str, target: str, source: str = "auto", timeout: fl
     payload = {"q": text, "source": source or "auto", "target": target, "format": "text"}
     headers = {"Content-Type": "application/json"}
 
+    WARN_ON_ERROR = os.getenv("TRANSLATION_WARN_ON_ERROR", "true").lower() != "false"
+    log = logging.warning if WARN_ON_ERROR else logging.info
     for url in LIBRE_ENDPOINTS:
         try:
             resp = requests.post(url, data=json.dumps(payload), headers=headers, timeout=timeout)
@@ -99,13 +107,13 @@ def safe_translate_old(text: str, target: str, source: str = "auto", timeout: fl
                 if out:
                     return out
                 else:
-                    logging.warning(f"[翻译失败-空返回] endpoint={url}")
+                    log(f"[翻译失败-空返回] endpoint={url}")
             else:
-                logging.warning(f"[翻译失败-HTTP{resp.status_code}] endpoint={url} text={text[:60]}")
+                log(f"[翻译失败-HTTP{resp.status_code}] endpoint={url} text={text[:60]}")
         except Exception as e:
-            logging.warning(f"[翻译异常] endpoint={url} err={e}")
+            log(f"[翻译异常] endpoint={url} err={e}")
 
-    logging.warning("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
+    log("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
     return text
 
 
