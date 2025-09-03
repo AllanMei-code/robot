@@ -217,7 +217,7 @@ def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
     if kb:
         reply_zh = kb["answer_zh"]
     else:
-        reply_zh = (get_bot_reply(msg_zh) or msg_zh)
+        reply_zh = (get_bot_reply(msg_zh, cid) or msg_zh)
 
     reply_fr = safe_translate(reply_zh, target="fr", source="zh")
     ts_send = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -286,7 +286,7 @@ def handle_client_message(data):
         if kb2:
             reply_zh = kb2["answer_zh"]
         else:
-            reply_zh = (get_bot_reply(msg_zh) or msg_zh)
+            reply_zh = (get_bot_reply(msg_zh, cid) or msg_zh)
         reply_fr = safe_translate(reply_zh, target=config_store.config["DEFAULT_CLIENT_LANG"], source="zh")
         payload2 = {
             "cid": cid,

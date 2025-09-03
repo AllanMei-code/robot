@@ -5,7 +5,7 @@
 你可以按需扩展 rules。
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 _RULES: Dict[str, str] = {
     # 关键词(小写) : 中文回答
@@ -29,7 +29,7 @@ _ALIASES: Dict[str, List[str]] = {
     "安全": ["账号安全", "风控", "安全"],
 }
 
-def get_bot_reply(text_zh: str) -> str:
+def get_bot_reply(text_zh: str, conv_id: Optional[str] = None) -> str:
     if not text_zh:
         return ""
     q = text_zh.strip().lower()
@@ -41,4 +41,12 @@ def get_bot_reply(text_zh: str) -> str:
     for canonical, words in _ALIASES.items():
         if any(w in q for w in words):
             return _RULES.get(canonical, "")
-    return ""  # 未命中：留给上层兜底
+    # 未命中：调用 LLM 机器人做兜底（中文回复）
+    try:
+        try:
+            from .llm_bot import reply_zh  # 包内导入
+        except Exception:
+            from llm_bot import reply_zh   # 兼容脚本方式运行
+        return reply_zh(conv_id or "default", text_zh)
+    except Exception:
+        return ""  # 若模型不可用，则仍由上层继续兜底
