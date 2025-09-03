@@ -136,7 +136,7 @@ def safe_translate(text: str, target: str, source: str = "auto", timeout: float 
         return text
 
     # 额外启发：目标为中文且文本已包含中日韩统一表意字符，视作已是中文
-    if tgt == "zh" and any('\u4e00' <= ch <= '\u9fff' for ch in text):
+    if tgt == "zh" and any(0x4E00 <= ord(ch) <= 0x9FFF for ch in text):
         return text
 
     payload = {"q": text, "source": src or "auto", "target": tgt, "format": "text"}
