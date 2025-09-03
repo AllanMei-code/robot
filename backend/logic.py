@@ -8,8 +8,8 @@
 from typing import Dict, List, Optional
 
 _RULES: Dict[str, str] = {
-    # 关键词(小写) : 中文回答
-    "注册": "您好，注册只需手机/邮箱即可完成，1分钟内通过验证码激活账号。",
+    # 关键字（小写）: 中文回答
+    "注册": "您好，注册只需手机号/邮箱即可完成，几分钟内通过验证码激活账号。",
     "登录": "您好，登录支持账号+密码或短信验证码。如忘记密码可在登录页找回。",
     "充值": "您好，充值支持银行卡、电子钱包等方式，实时到账，无手续费。",
     "提现": "您好，提现提交后一般 5-30 分钟到账，请确保账户已完成实名与绑定。",
@@ -28,6 +28,7 @@ _ALIASES: Dict[str, List[str]] = {
     "规则": ["玩法", "规则", "how to play"],
     "安全": ["账号安全", "风控", "安全"],
 }
+
 
 def get_bot_reply(text_zh: str, conv_id: Optional[str] = None) -> str:
     if not text_zh:
@@ -50,3 +51,4 @@ def get_bot_reply(text_zh: str, conv_id: Optional[str] = None) -> str:
         return reply_zh(conv_id or "default", text_zh)
     except Exception:
         return ""  # 若模型不可用，则仍由上层继续兜底
+

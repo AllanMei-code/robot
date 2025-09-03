@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>客服系统测试</title>
 
-  <!-- 深色样式（你的 assets/style.css 应已包含深色主题与统一按钮尺寸） -->
+  <!-- 深色样式（assets/style.css 应已包含深色主题与统一按钮尺寸） -->
   <link rel="stylesheet" href="assets/style.css?v=2025-08-28-11" id="theme-css"/>
 
+  <!-- socket.io -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- 配置脚本（会触发 configReady 事件） -->
+  <script src="js/config.js?v=2025-08-28-07"></script>
 </head>
 
 <body>
@@ -74,7 +78,7 @@
           <span>😎</span><span>🤔</span><span>😭</span><span>🎉</span>
         </div>
 
-        <!-- ✅ 上线/下线切换 -->
+        <!-- 人工上线/下线切换 -->
         <button id="agent-online-toggle" class="status-btn online" title="人工上线/下线">下线</button>
 
         <button id="agent-send" class="tool-btn primary" title="发送" aria-label="发送">
@@ -86,10 +90,7 @@
     </div>
   </div>
 
-  <!-- socket.io -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <!-- 你的配置脚本（会触发 configReady 事件） -->
-  <script src="js/config.js?v=2025-08-28-07"></script>
   <script src="js/app.js?v=2025-08-28-07"></script>
 </body>
 </html>
+

@@ -77,7 +77,7 @@ LIBRE_ENDPOINTS = [
     "https://libretranslate.com/translate",
 ]
 
-def safe_translate(text: str, target: str, source: str = "auto", timeout: float = 5.0) -> str:
+def safe_translate_old(text: str, target: str, source: str = "auto", timeout: float = 5.0) -> str:
     """
     使用多个 LibreTranslate 端点级联翻译。
     - 成功：返回译文
