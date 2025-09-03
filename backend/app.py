@@ -20,6 +20,7 @@ from flask_socketio import SocketIO, emit, join_room
 
 import requests
 import threading
+from typing import Any, cast
 
 # ---------- 业务模块（保持你的原有功能） ----------
 # 兼容包方式（backend.app:app）与目录方式（app:app）启动
@@ -120,8 +121,13 @@ last_agent_activity_by_cid = {}           # cid -> epoch 秒（客服上次活�
 last_client_by_cid = {}                   # cid -> {'fr','zh','ts'}  用于自动学习
 last_client_msg_ts_by_cid = {}            # cid -> 最近一条客户消息 token
 
+def _get_sid() -> str:
+    # Flask's request type stub lacks 'sid' provided by Flask-SocketIO at runtime
+    return str(getattr(request, "sid", ""))
+
+
 def _cid_of_current():
-    info = session_info.get(request.sid, {})
+    info = session_info.get(_get_sid(), {})
     return info.get('cid', 'default')
 
 def _manual_online(cid):
@@ -137,7 +143,7 @@ def _typing_suppressed(cid):
     return time.time() < suppress_until_by_cid.get(cid, 0)
 
 def broadcast_agent_status(cid):
-    socketio.emit('agent_status', {'cid': cid, 'online': _manual_online(cid)}, room=cid)
+    socketio.emit('agent_status', {'cid': cid, 'online': _manual_online(cid)}, to=cid)
 
 # ============== REST ==============
 @app.route('/api/v1/config', methods=['GET'])
@@ -153,7 +159,8 @@ def get_config():
 def handle_connect():
     role = request.args.get("role", "client")
     cid  = request.args.get("cid", "default")
-    session_info[request.sid] = {'role': role, 'cid': cid}
+    sid = _get_sid()
+    session_info[sid] = {'role': role, 'cid': cid}
 
     join_room(cid)
     if role == "agent":
@@ -162,13 +169,14 @@ def handle_connect():
     else:
         join_room(f"{cid}:clients")
 
-    logging.info(f"{role} connected: sid={request.sid}, cid={cid}")
+    logging.info(f"{role} connected: sid={sid}, cid={cid}")
     broadcast_agent_status(cid)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    info = session_info.pop(request.sid, None)
-    logging.info(f"disconnected: sid={request.sid}, info={info}")
+    sid = _get_sid()
+    info = session_info.pop(sid, None)
+    logging.info(f"disconnected: sid={sid}, info={info}")
 
 @socketio.on('agent_set_status')
 def handle_agent_set_status(data):
@@ -187,7 +195,7 @@ def handle_agent_typing(_data=None):
 def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
     deadline = token + INACTIVITY_SEC
     while time.time() < deadline:
-        socketio.sleep(0.5)
+        socketio.sleep(0.5)  # type: ignore[arg-type]
         if last_client_msg_ts_by_cid.get(cid, 0) != token:
             return
         if last_agent_activity_by_cid.get(cid, 0) > token:
@@ -199,7 +207,7 @@ def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
         return
 
     while _typing_suppressed(cid):
-        socketio.sleep(0.3)
+        socketio.sleep(0.3)  # type: ignore[arg-type]
         if last_client_msg_ts_by_cid.get(cid, 0) != token:
             return
         if last_agent_activity_by_cid.get(cid, 0) > token:
@@ -223,8 +231,8 @@ def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
         "reply_fr": reply_fr,
         "timestamp": ts_send
     }
-    socketio.emit('new_message', payload, room=f"{cid}:agents")
-    socketio.emit('new_message', payload, room=f"{cid}:clients")
+    socketio.emit('new_message', payload, to=f"{cid}:agents")
+    socketio.emit('new_message', payload, to=f"{cid}:clients")
     log_message("bot", "zh", reply_zh, conv_id=cid)
     log_message("bot", "fr", reply_fr, conv_id=cid)
 
@@ -238,8 +246,8 @@ def handle_client_message(data):
     # 图片
     if image:
         payload_img = {"cid": cid, "from": "client", "image": image, "timestamp": ts}
-        socketio.emit('new_message', payload_img, room=f"{cid}:agents")
-        socketio.emit('new_message', payload_img, room=f"{cid}:clients")
+        socketio.emit('new_message', payload_img, to=f"{cid}:agents")
+        socketio.emit('new_message', payload_img, to=f"{cid}:clients")
         log_message("client", "img", "[image]", conv_id=cid)
         return
 
@@ -269,8 +277,8 @@ def handle_client_message(data):
     if _manual_online(cid) and kb:
         payload["suggest_zh"] = kb["answer_zh"]
 
-    socketio.emit('new_message', payload, room=f"{cid}:agents")
-    socketio.emit('new_message', payload, room=f"{cid}:clients")
+    socketio.emit('new_message', payload, to=f"{cid}:agents")
+    socketio.emit('new_message', payload, to=f"{cid}:clients")
 
     # 机器人介入逻辑
     if not _manual_online(cid):
@@ -290,8 +298,8 @@ def handle_client_message(data):
             "reply_fr": reply_fr,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
-        socketio.emit('new_message', payload2, room=f"{cid}:agents")
-        socketio.emit('new_message', payload2, room=f"{cid}:clients")
+        socketio.emit('new_message', payload2, to=f"{cid}:agents")
+        socketio.emit('new_message', payload2, to=f"{cid}:clients")
         log_message("bot", "zh", reply_zh, conv_id=cid)
         log_message("bot", "fr", reply_fr, conv_id=cid)
     else:
@@ -309,7 +317,7 @@ def handle_agent_message(data):
 
     if image:
         payload = {"cid": cid, "from": "agent", "image": image, "timestamp": ts}
-        socketio.emit('new_message', payload, room=f"{cid}:clients")
+        socketio.emit('new_message', payload, to=f"{cid}:clients")
         log_message("agent", "img", "[image]", conv_id=cid)
         return
 
@@ -326,7 +334,7 @@ def handle_agent_message(data):
         "translated": translated, # 客户端收到的翻译
         "timestamp": ts
     }
-    socketio.emit('new_message', payload, room=f"{cid}:clients")
+    socketio.emit('new_message', payload, to=f"{cid}:clients")
     log_message("agent", "zh", msg, conv_id=cid)
     log_message("agent", target_lang, translated, conv_id=cid)
 
@@ -342,9 +350,10 @@ def handle_agent_message(data):
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    return send_from_directory(app.static_folder, 'index.html')
+    static_dir = cast(str, app.static_folder)
+    if path and os.path.exists(os.path.join(static_dir, path)):
+        return send_from_directory(static_dir, path)
+    return send_from_directory(static_dir, 'index.html')
 
 # ============== 启动（开发模式） ==============
 if __name__ == "__main__" and os.getenv("FLASK_ENV") != "production":
