@@ -108,6 +108,61 @@ def safe_translate(text: str, target: str, source: str = "auto", timeout: float 
     logging.warning("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
     return text
 
+
+# 兼容覆盖：改进版 safe_translate（优先 JSON，其次表单；auto 时先检测语种；超时可配置）
+TRANSLATION_TIMEOUT = float(os.getenv("TRANSLATION_TIMEOUT_SEC", "5.0"))
+
+
+def safe_translate(text: str, target: str, source: str = "auto", timeout: float = TRANSLATION_TIMEOUT) -> str:
+    text = (text or "").strip()
+    if not text or not config_store.config["TRANSLATION_ENABLED"]:
+        return text
+
+    try:
+        if (source or "auto").lower() == "auto":
+            try:
+                from .policy import detect_lang  # 包内导入
+            except Exception:
+                from policy import detect_lang   # 兼容脚本方式
+            source = detect_lang(text) or "auto"
+    except Exception:
+        pass
+
+    payload = {"q": text, "source": source or "auto", "target": target, "format": "text"}
+
+    for url in LIBRE_ENDPOINTS:
+        try:
+            # 先尝试 JSON 提交
+            resp = requests.post(url, json=payload, timeout=timeout)
+            if resp.ok:
+                data = resp.json()
+                out = (data.get("translatedText") or "").strip()
+                if out:
+                    return out
+                else:
+                    logging.warning(f"[翻译失败-空返回] endpoint={url}")
+            else:
+                # 若 JSON 返回 400/415/422 等，尝试表单回退
+                if resp.status_code in (400, 415, 422):
+                    try:
+                        resp2 = requests.post(url, data=payload, timeout=timeout)
+                        if resp2.ok:
+                            data2 = resp2.json()
+                            out2 = (data2.get("translatedText") or "").strip()
+                            if out2:
+                                return out2
+                        else:
+                            logging.warning(f"[翻译失败-HTTP{resp2.status_code}-form] endpoint={url} text={text[:60]}")
+                    except Exception as e2:
+                        logging.warning(f"[翻译异常-form] endpoint={url} err={e2}")
+                else:
+                    logging.warning(f"[翻译失败-HTTP{resp.status_code}] endpoint={url} text={text[:60]}")
+        except Exception as e:
+            logging.warning(f"[翻译异常] endpoint={url} err={e}")
+
+    logging.warning("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
+    return text
+
 # ============== 状态与会话 ==============
 init_db()  # 初始化学习库
 
