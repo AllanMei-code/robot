@@ -118,17 +118,28 @@ def safe_translate(text: str, target: str, source: str = "auto", timeout: float 
     if not text or not config_store.config["TRANSLATION_ENABLED"]:
         return text
 
+    tgt = (target or "en").strip().lower()[:2] or "en"
+    src = (source or "auto").strip().lower()
+
     try:
-        if (source or "auto").lower() == "auto":
+        if src == "auto":
             try:
                 from .policy import detect_lang  # 包内导入
             except Exception:
                 from policy import detect_lang   # 兼容脚本方式
-            source = detect_lang(text) or "auto"
+            src = (detect_lang(text) or "auto").lower()
     except Exception:
         pass
 
-    payload = {"q": text, "source": source or "auto", "target": target, "format": "text"}
+    # 如果检测到源语言与目标语言相同，直接返回原文，避免外网请求
+    if (src or "").startswith(tgt):
+        return text
+
+    # 额外启发：目标为中文且文本已包含中日韩统一表意字符，视作已是中文
+    if tgt == "zh" and any('\u4e00' <= ch <= '\u9fff' for ch in text):
+        return text
+
+    payload = {"q": text, "source": src or "auto", "target": tgt, "format": "text"}
 
     for url in LIBRE_ENDPOINTS:
         try:
