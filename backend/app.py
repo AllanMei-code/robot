@@ -121,6 +121,15 @@ def safe_translate(text: str, target: str, source: str = "auto", timeout: float 
     tgt = (target or "en").strip().lower()[:2] or "en"
     src = (source or "auto").strip().lower()
 
+    # 最高优先：若目标为中文且文本包含 CJK 统一表意字符，直接返回原文（不触发语言检测与外网请求）
+    if tgt == "zh" and any(0x4E00 <= ord(ch) <= 0x9FFF for ch in text):
+        return text
+
+    # 若已明确源语言且与目标一致，直接返回
+    if src != "auto" and (src or "").startswith(tgt):
+        return text
+
+    # 需要检测源语言时才调用（避免不必要的外部请求与告警）
     try:
         if src == "auto":
             try:
@@ -131,12 +140,8 @@ def safe_translate(text: str, target: str, source: str = "auto", timeout: float 
     except Exception:
         pass
 
-    # 如果检测到源语言与目标语言相同，直接返回原文，避免外网请求
+    # 检测后再次判断同语种早返回
     if (src or "").startswith(tgt):
-        return text
-
-    # 额外启发：目标为中文且文本已包含中日韩统一表意字符，视作已是中文
-    if tgt == "zh" and any(0x4E00 <= ord(ch) <= 0x9FFF for ch in text):
         return text
 
     payload = {"q": text, "source": src or "auto", "target": tgt, "format": "text"}
