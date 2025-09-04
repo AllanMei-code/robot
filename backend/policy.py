@@ -1,5 +1,5 @@
 # policy.py
-import re, requests, logging
+import os, re, requests, logging
 from typing import Optional
 
 ALLOWED_TOPICS = [
@@ -24,19 +24,46 @@ OUT_OF_SCOPE = {
     "en_fallback": "Sorry, this query is not supported at the moment. Please leave your email and we will contact you within 24 hours.",
 }
 
+def _detect_endpoints() -> list:
+    eps = []
+    # 1) 优先从环境变量 LIBRE_DETECT_ENDPOINTS 读取（逗号分隔，完整 /detect 路径）
+    env_eps = os.getenv("LIBRE_DETECT_ENDPOINTS", "").strip()
+    if env_eps:
+        eps.extend([u.strip() for u in env_eps.split(",") if u.strip()])
+
+    # 2) 兼容：从 LIBRE_ENDPOINTS 推导，将 /translate 替换为 /detect 或在末尾加 /detect
+    env_tr = os.getenv("LIBRE_ENDPOINTS", "").strip()
+    if env_tr:
+        for u in [x.strip() for x in env_tr.split(",") if x.strip()]:
+            if "/translate" in u:
+                eps.append(u.replace("/translate", "/detect"))
+            else:
+                eps.append(u.rstrip("/") + "/detect")
+
+    # 3) 公共备选（可能不稳定）
+    eps.append("https://libretranslate.de/detect")
+    return eps
+
+
 def detect_lang(text: str) -> str:
     text = (text or "").strip()
     if not text:
         return "en"
-    try:
-        r = requests.post("https://libretranslate.de/detect", json={"q": text}, timeout=3)
-        if r.ok:
-            data = r.json()
-            if data and isinstance(data, list):
-                code = (data[0].get("language") or "en").lower()
-                return code[:2]
-    except Exception as e:
-        logging.info(f"detect_lang fallback: {e}")
+    # 先尝试可配置/本地的 detect 端点，再回退公共端点
+    for url in _detect_endpoints():
+        try:
+            r = requests.post(url, json={"q": text}, timeout=3)
+            if r.ok:
+                data = r.json()
+                if data and isinstance(data, list):
+                    code = (data[0].get("language") or "en").lower()
+                    return code[:2]
+                else:
+                    logging.info(f"detect_lang empty response from {url}")
+            else:
+                logging.info(f"detect_lang HTTP{r.status_code} from {url}")
+        except Exception as e:
+            logging.info(f"detect_lang fallback on {url}: {e}")
 
     # 启发式：法语简单标记
     fr_markers = [" le ", " la ", " de ", " je ", "vous", "avoir", "être", "pour", " s'"]

@@ -9,14 +9,17 @@ from __future__ import annotations
 
 from typing import Dict, List
 from openai import OpenAI
-import os
+import os, logging
 
-# 可通过环境变量或直接在此处配置网关
-BASE_URL = os.getenv("LLM_BASE_URL", "http://192.168.196.184:8080/v1")
+# 可通过环境变量或直接在此处配置网关（默认对齐本机/标准别名）
+BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
 API_KEY = os.getenv("LLM_API_KEY", "sk-noauth")
-MODEL = os.getenv("LLM_MODEL", "gpt-oss-20b")
+MODEL = os.getenv("LLM_MODEL", "qwen2.5-3b-instruct-q5_k_m")
 
 client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
+logging.getLogger(__name__).info(
+    "[LLM] base_url=%s model=%s (set via env LLM_BASE_URL/LLM_MODEL)", BASE_URL, MODEL
+)
 
 SYSTEM_PROMPT = (
     "你是一名在线博彩游戏客服，名字叫「Leo」，24小时在线，精通法语、英语、斯瓦希里语。\n"
@@ -67,4 +70,3 @@ def reply_zh(cid: str, user_text_zh: str, max_tokens: int = 256, temperature: fl
     if len(history) > 25:
         _messages_by_cid[cid] = [history[0]] + history[-24:]
     return out
-

@@ -1,8 +1,8 @@
 from openai import OpenAI
 
-BASE_URL = "http://192.168.196.184:8080/v1"
+BASE_URL = "http://127.0.0.1:8080/v1"
 API_KEY = "sk-noauth"
-MODEL = "gpt-oss-20b"
+MODEL = "qwen2.5-3b-instruct-q5_k_m"
 
 client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
 
@@ -61,4 +61,3 @@ if __name__ == "__main__":
             chat_once(user)
     except (EOFError, KeyboardInterrupt):
         pass
-
