@@ -1,0 +1,25 @@
+[Unit]
+Description=llama.cpp OpenAI-compatible server (Qwen2.5-3B-Instruct GGUF)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/models
+ExecStart=/usr/bin/python3 -m llama_cpp.server \
+  --model /opt/models/qwen2.5-3b-instruct-q5_k_m.gguf \
+  --host 0.0.0.0 --port 8080 \
+  --n-gpu-layers 0 --threads 4 \
+  --chat-template qwen2 \
+  --model_alias qwen2.5-3b-instruct-q5_k_m
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,21 @@
+[Unit]
+Description=Chatbot Backend (Flask + Socket.IO via gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/chatbot_project
+EnvironmentFile=/opt/chatbot_project/.env
+ExecStart=/usr/bin/gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 -b 0.0.0.0:5000 backend.app:app --access-logfile gunicorn.log --error-logfile gunicorn.log --log-level info
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
+
