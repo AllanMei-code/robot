@@ -90,7 +90,7 @@ function initApp() {
     if (clientMsgs) {
       if (data.from === 'client') {
         addMessage(clientMsgs, data.original || '', 'client', 'right', false, ts);
-        if (data.bot_reply) {
+    if (data.bot_reply && ((data.reply_zh || '').trim() !== (data.client_zh || '').trim())) {
           addMessage(clientMsgs, data.reply_fr || data.bot_reply, 'agent', 'left', false, ts);
         }
       } else if (data.from === 'agent') {
@@ -102,7 +102,7 @@ function initApp() {
     if (agentMsgs) {
       if (data.from === 'client') {
         addMessage(agentMsgs, data.client_zh || data.original || '', 'client', 'left', false, ts);
-        if (data.bot_reply) {
+        if (data.bot_reply && ((data.reply_zh || '').trim() !== (data.client_zh || '').trim())) {
           addMessage(agentMsgs, data.reply_zh || data.bot_reply, 'agent', 'right', false, ts);
         } else if (data.suggest_zh) {
           addMessage(agentMsgs, `（建议）${data.suggest_zh}`, 'agent', 'right', false, ts);
@@ -196,6 +196,13 @@ function initApp() {
 
   // ===== UI 渲染函数 =====
   function addMessage(container, content, sender, align, isHTML=false, timestamp=null) {
+    // 简易去重：同容器+发送方+时间+内容
+    window.__seenMsgs = window.__seenMsgs || new Set();
+    const tsKey = timestamp || new Date().toISOString().replace("T"," ").substring(0,16);
+    const raw = (isHTML ? String(content) : (content ?? '')).trim();
+    const k = `${container.id}|${sender}|${tsKey}|${raw}`;
+    if (window.__seenMsgs.has(k)) return;
+    window.__seenMsgs.add(k);
     if (!container) return;
     const wrap = document.createElement('div');
     wrap.className = `message-wrapper ${align}`;
