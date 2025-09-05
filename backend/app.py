@@ -238,7 +238,12 @@ def _llm_translate_fallback(text: str, target: str, source: str = "auto") -> str
     api_key  = os.getenv("LLM_API_KEY", "sk-noauth")
     model    = os.getenv("LLM_MODEL", "qwen2.5-3b-instruct-q5_k_m")
 
-    client = OpenAI(base_url=base_url, api_key=api_key)
+    # 配置重试次数（默认 0，避免 500 时重复重试）
+    try:
+        max_retries = int(os.getenv("LLM_MAX_RETRIES", "0"))
+    except Exception:
+        max_retries = 0
+    client = OpenAI(base_url=base_url, api_key=api_key, max_retries=max_retries)
 
     tgt = (target or "en").lower()[:2]
     _ = (source or "auto").lower()
@@ -262,7 +267,16 @@ def _llm_translate_fallback(text: str, target: str, source: str = "auto") -> str
         )
         user_prompt = f"Target language: {tgt}\nText:\n{text}"
 
+    # llama.cpp OpenAI server 需要正确的 chat handler；
+    # 支持通过环境变量显式指定，或基于模型名自动推断（如 qwen2* -> qwen）。
+    chat_format = (os.getenv("LLM_CHAT_FORMAT", "").strip() or "")
+    if not chat_format:
+        m = model.lower()
+        if "qwen" in m:
+            chat_format = "qwen"  # 覆盖 qwen2.x 等为 qwen
+
     try:
+        extra_body = {"chat_format": chat_format} if chat_format else None
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -271,6 +285,7 @@ def _llm_translate_fallback(text: str, target: str, source: str = "auto") -> str
             ],
             temperature=0.0,
             max_tokens=max(128, min(2048, len(text) * 3)),
+            **({"extra_body": extra_body} if extra_body else {}),
         )
         out = (resp.choices[0].message.content or "").strip()
         return out or text
