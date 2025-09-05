@@ -70,6 +70,22 @@ def upsert_qa(q_fr: str, q_zh: str, a_zh: str, source: str = "agent_auto"):
     a_zh = (a_zh or "").strip()[:2000]
     now = datetime.now().isoformat(timespec="seconds")
 
+    # 自动提取关键词（中文和法语）
+    keywords = []
+    # 提取中文关键词
+    if q_zh:
+        import jieba
+        keywords += jieba.lcut(q_zh)[:10]
+    # 提取法语关键词
+    if q_fr:
+        import spacy
+        nlp = spacy.load("fr_core_news_sm")
+        doc = nlp(q_fr)
+        keywords += [ent.text.lower() for ent in doc.ents[:5]]
+    # 去重并限制长度
+    keywords = list(set(keywords))[:15]
+    keywords_str = ",".join(keywords)
+    
     with _connect() as conn, _lock:
         # 去重策略：同 q_zh 且答案相似（这里简化为完全相同）则 hits+1
         row = conn.execute("SELECT id, a_zh FROM knowledge WHERE q_zh=? LIMIT 1", (q_zh,)).fetchone()
@@ -90,7 +106,7 @@ def upsert_qa(q_fr: str, q_zh: str, a_zh: str, source: str = "agent_auto"):
         try:
             conn.execute(
                 "INSERT OR REPLACE INTO knowledge_fts(rowid, question_all, answer_zh) VALUES(?,?,?)",
-                (kid, f"{q_fr} {q_zh}", a_zh)
+                (kid, f"{q_fr} {q_zh} {keywords_str}", a_zh)
             )
         except sqlite3.Error:
             pass
