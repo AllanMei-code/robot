@@ -16,7 +16,13 @@ BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
 API_KEY = os.getenv("LLM_API_KEY", "sk-noauth")
 MODEL = os.getenv("LLM_MODEL", "qwen2.5-3b-instruct-q5_k_m")
 
-client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
+# 关闭重试（默认 0），避免 500 时重复重打
+try:
+    _MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "0"))
+except Exception:
+    _MAX_RETRIES = 0
+
+client = OpenAI(base_url=BASE_URL, api_key=API_KEY, max_retries=_MAX_RETRIES)
 logging.getLogger(__name__).info(
     "[LLM] base_url=%s model=%s (set via env LLM_BASE_URL/LLM_MODEL)", BASE_URL, MODEL
 )
@@ -47,6 +53,9 @@ _messages_by_cid: Dict[str, List[Dict[str, str]]] = {}
 
 
 def reply_zh(cid: str, user_text_zh: str, max_tokens: int = 256, temperature: float = 0.7) -> str:
+    # 允许通过环境变量禁用机器人兜底（与翻译兜底独立开关）
+    if os.getenv("LLM_BOT_ENABLED", "true").lower() == "false":
+        return ""
     cid = cid or "default"
     if cid not in _messages_by_cid:
         _messages_by_cid[cid] = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -58,12 +67,19 @@ def reply_zh(cid: str, user_text_zh: str, max_tokens: int = 256, temperature: fl
 
     t0 = time.time()
     logging.info("[LLM] call -> model=%s cid=%s tokens=%s temp=%.2f", MODEL, cid, max_tokens, temperature)
+    # llama.cpp OpenAI server 需要正确的 chat 模板；支持 LLM_CHAT_FORMAT 或按模型名推断
+    chat_format = (os.getenv("LLM_CHAT_FORMAT", "").strip() or "")
+    if not chat_format and "qwen" in (MODEL or "").lower():
+        chat_format = "qwen"
+
     try:
+        extra_body = {"chat_format": chat_format} if chat_format else None
         resp = client.chat.completions.create(
             model=MODEL,
             messages=history,
             max_tokens=max_tokens,
             temperature=temperature,
+            **({"extra_body": extra_body} if extra_body else {}),
         )
         raw = resp.choices[0].message.content or ""
         out = _extract_message(raw)
