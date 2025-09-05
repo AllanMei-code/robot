@@ -64,6 +64,8 @@ class ConfigStore:
             "API_BASE_URL": base_url,
             "DEFAULT_CLIENT_LANG": os.getenv("DEFAULT_CLIENT_LANG", "fr"),
             "TRANSLATION_ENABLED": os.getenv("TRANSLATION_ENABLED", "true").lower() != "false",
+            # 控制是否启用本地 LLM 翻译兜底（避免本地未部署时频繁 500）
+            "LLM_FALLBACK_ENABLED": os.getenv("LLM_FALLBACK_ENABLED", "true").lower() != "false",
             "MAX_MESSAGE_LENGTH": int(os.getenv("MAX_MESSAGE_LENGTH", "500"))
         }
 
@@ -211,11 +213,14 @@ def safe_translate_with_fallback(text: str, target: str, source: str = "auto", t
         lang = src
     if (lang or "").startswith(tgt):
         return text
-    # 使用本地 LLM 兜底翻译
+    # 使用本地 LLM 兜底翻译（可通过 LLM_FALLBACK_ENABLED 关闭）
+    if not config_store.config.get("LLM_FALLBACK_ENABLED", True):
+        return text
     try:
         out_llm = _llm_translate_fallback(text, target=tgt, source=lang)
         return out_llm or text
-    except Exception:
+    except Exception as e:
+        logging.info(f"LLM translate fallback skipped due to error: {e}")
         return text
 
 def _llm_translate_fallback(text: str, target: str, source: str = "auto") -> str:
@@ -257,17 +262,21 @@ def _llm_translate_fallback(text: str, target: str, source: str = "auto") -> str
         )
         user_prompt = f"Target language: {tgt}\nText:\n{text}"
 
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.0,
-        max_tokens=max(128, min(2048, len(text) * 3)),
-    )
-    out = (resp.choices[0].message.content or "").strip()
-    return out or text
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+            max_tokens=max(128, min(2048, len(text) * 3)),
+        )
+        out = (resp.choices[0].message.content or "").strip()
+        return out or text
+    except Exception as e:
+        logging.info(f"LLM translate request failed (will return original): {e}")
+        return text
 
 # ============== 状态与会话 ==============
 init_db()  # 初始化学习库
