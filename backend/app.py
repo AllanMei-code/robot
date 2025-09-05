@@ -45,11 +45,23 @@ app = Flask(
     static_folder=os.path.join(BASE_DIR, "frontend"),
     static_url_path=""
 )
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": [os.getenv("FRONTEND_ORIGIN", "http://3.71.28.18:3000")]}})
+
+# 允许多个前端来源，通过 FRONTEND_ORIGINS（逗号分隔）或兼容 FRONTEND_ORIGIN
+def _get_allowed_origins() -> list[str]:
+    raw = os.getenv("FRONTEND_ORIGINS", "").strip()
+    if not raw:
+        raw = os.getenv("FRONTEND_ORIGIN", "http://3.71.28.18:3000").strip()
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    return origins or ["http://3.71.28.18:3000"]
+
+_ALLOWED_ORIGINS = _get_allowed_origins()
+logging.info("[CORS] allowed origins: %s", _ALLOWED_ORIGINS)
+
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": _ALLOWED_ORIGINS}})
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins=[os.getenv("FRONTEND_ORIGIN", "http://3.71.28.18:3000")],
+    cors_allowed_origins=_ALLOWED_ORIGINS,
     async_mode="gevent",
     max_http_buffer_size=20 * 1024 * 1024
 )
