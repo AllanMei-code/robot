@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 from openai import OpenAI
-import os, logging
+import os, logging, time
 
 # 可通过环境变量或直接在此处配置网关（默认对齐本机/标准别名）
 BASE_URL = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
@@ -56,14 +56,21 @@ def reply_zh(cid: str, user_text_zh: str, max_tokens: int = 256, temperature: fl
     history = _messages_by_cid[cid]
     history.append({"role": "user", "content": user_text_zh})
 
-    resp = client.chat.completions.create(
-        model=MODEL,
-        messages=history,
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
-    raw = resp.choices[0].message.content or ""
-    out = _extract_message(raw)
+    t0 = time.time()
+    logging.info("[LLM] call -> model=%s cid=%s tokens=%s temp=%.2f", MODEL, cid, max_tokens, temperature)
+    try:
+        resp = client.chat.completions.create(
+            model=MODEL,
+            messages=history,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        raw = resp.choices[0].message.content or ""
+        out = _extract_message(raw)
+        logging.info("[LLM] ok <- cid=%s elapsed=%.2fs len=%s", cid, time.time()-t0, len(out))
+    except Exception as e:
+        logging.error("[LLM] fail <- cid=%s err=%s", cid, e)
+        out = ""
     history.append({"role": "assistant", "content": out})
 
     # 历史裁剪：保留 system + 最近 12 轮（24 条）

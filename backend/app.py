@@ -187,6 +187,88 @@ def safe_translate(text: str, target: str, source: str = "auto", timeout: float 
     logging.warning("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
     return text
 
+def safe_translate_with_fallback(text: str, target: str, source: str = "auto", timeout: float = TRANSLATION_TIMEOUT) -> str:
+    """
+    先使用 safe_translate；若返回与原文相同且确实需要跨语种翻译，则使用本地 LLM 兜底。
+    """
+    text = (text or "").strip()
+    if not text:
+        return text
+    out = safe_translate(text, target=target, source=source, timeout=timeout)
+    # 若已有翻译结果（不同于原文）则直接返回
+    if out != text:
+        return out
+    # 判断是否确实需要翻译（避免同语种、中文直返等情况）
+    tgt = (target or "en").strip().lower()[:2]
+    src = (source or "auto").strip().lower()
+    try:
+        try:
+            from .policy import detect_lang
+        except Exception:
+            from policy import detect_lang
+        lang = (detect_lang(text) or "auto").lower()
+    except Exception:
+        lang = src
+    if (lang or "").startswith(tgt):
+        return text
+    # 使用本地 LLM 兜底翻译
+    try:
+        out_llm = _llm_translate_fallback(text, target=tgt, source=lang)
+        return out_llm or text
+    except Exception:
+        return text
+
+def _llm_translate_fallback(text: str, target: str, source: str = "auto") -> str:
+    """
+    使用本地/自托管 OpenAI 兼容模型进行翻译兜底。
+    依赖环境变量：LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
+    """
+    try:
+        from openai import OpenAI
+    except Exception as e:
+        logging.warning("openai SDK 不可用: %s", e)
+        return text
+
+    base_url = os.getenv("LLM_BASE_URL", "http://127.0.0.1:8080/v1")
+    api_key  = os.getenv("LLM_API_KEY", "sk-noauth")
+    model    = os.getenv("LLM_MODEL", "qwen2.5-3b-instruct-q5_k_m")
+
+    client = OpenAI(base_url=base_url, api_key=api_key)
+
+    tgt = (target or "en").lower()[:2]
+    _ = (source or "auto").lower()
+
+    if tgt == "zh":
+        sys_prompt = (
+            "你是一名专业翻译，仅负责把给定文本翻译成简体中文。"
+            "只输出译文，不要任何解释或前后缀。"
+        )
+        user_prompt = f"将以下内容翻译成简体中文：\n\n{text}"
+    elif tgt == "fr":
+        sys_prompt = (
+            "Vous êtes un traducteur professionnel. Traduisez le texte fourni en français. "
+            "Répondez uniquement par la traduction, sans explications."
+        )
+        user_prompt = f"Traduisez en français:\n\n{text}"
+    else:
+        sys_prompt = (
+            "You are a professional translator. Translate the provided text into the target language. "
+            "Output only the translation, with no extra text."
+        )
+        user_prompt = f"Target language: {tgt}\nText:\n{text}"
+
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.0,
+        max_tokens=max(128, min(2048, len(text) * 3)),
+    )
+    out = (resp.choices[0].message.content or "").strip()
+    return out or text
+
 # ============== 状态与会话 ==============
 init_db()  # 初始化学习库
 
@@ -298,7 +380,7 @@ def _delayed_bot_reply(cid, token, msg_fr, msg_zh):
     else:
         reply_zh = (get_bot_reply(msg_zh, cid) or msg_zh)
 
-    reply_fr = safe_translate(reply_zh, target="fr", source="zh")
+    reply_fr = safe_translate_with_fallback(reply_zh, target="fr", source="zh")
     ts_send = datetime.now().strftime("%Y-%m-%d %H:%M")
     payload = {
         "cid": cid,
@@ -335,7 +417,7 @@ def handle_client_message(data):
         return
     
     # 统一用 auto → zh，容错多语言
-    msg_zh = safe_translate(msg_fr, target="zh", source="auto")
+    msg_zh = safe_translate_with_fallback(msg_fr, target="zh", source="auto")
 
     token = time.time()
     last_client_msg_ts_by_cid[cid] = token
@@ -366,7 +448,7 @@ def handle_client_message(data):
             reply_zh = kb2["answer_zh"]
         else:
             reply_zh = (get_bot_reply(msg_zh, cid) or msg_zh)
-        reply_fr = safe_translate(reply_zh, target=config_store.config["DEFAULT_CLIENT_LANG"], source="zh")
+        reply_fr = safe_translate_with_fallback(reply_zh, target=config_store.config["DEFAULT_CLIENT_LANG"], source="zh")
         payload2 = {
             "cid": cid,
             "from": "client",
@@ -404,7 +486,7 @@ def handle_agent_message(data):
         return
 
     # 客服发中文 → 客户端显示目标语（如 fr）
-    translated = safe_translate(msg, target=target_lang, source="auto")
+    translated = safe_translate_with_fallback(msg, target=target_lang, source="auto")
 
     payload = {
         "cid": cid,

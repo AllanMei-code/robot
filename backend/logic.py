@@ -6,6 +6,7 @@
 """
 
 from typing import Dict, List, Optional
+import logging
 
 _RULES: Dict[str, str] = {
     # 关键字（小写）: 中文回答
@@ -48,7 +49,7 @@ def get_bot_reply(text_zh: str, conv_id: Optional[str] = None) -> str:
             from .llm_bot import reply_zh  # 包内导入
         except Exception:
             from llm_bot import reply_zh   # 兼容脚本方式运行
+        logging.info("[BOT] fallback to LLM for reply (conv_id=%s)", conv_id)
         return reply_zh(conv_id or "default", text_zh)
     except Exception:
         return ""  # 若模型不可用，则仍由上层继续兜底
-

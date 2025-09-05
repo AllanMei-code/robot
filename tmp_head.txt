@@ -1,0 +1,200 @@
+# -*- coding: utf-8 -*-
+"""
+App 服务（Socket.IO + REST�?
+- 会话（cid）隔�?+ 客户�?客服端分房间
+- 人工/机器切换（在�?只学习，离线/超时=机器人代答）
+- 打字抑制（客服正在输入时，不触发机器人）
+- 多端�?LibreTranslate 级联翻译（无第三方大模型依赖�?
+"""
+
+import os
+import re
+import time
+import json
+import logging
+from datetime import datetime
+
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room
+
+import requests
+import threading
+from typing import Any, cast
+
+# ---------- 业务模块（保持你的原有功能） ----------
+# 兼容包方式（backend.app:app）与目录方式（app:app）启�?
+try:
+    from .logic import get_bot_reply
+    from .bot_store import init_db, log_message, upsert_qa, retrieve_best
+    from .policy import detect_lang, classify_topic, out_of_scope_reply, ALLOWED_TOPICS
+    from .templates_kb import render_template
+    from .responses import polite_short
+except Exception:
+    from logic import get_bot_reply
+    from bot_store import init_db, log_message, upsert_qa, retrieve_best
+    from policy import detect_lang, classify_topic, out_of_scope_reply, ALLOWED_TOPICS
+    from templates_kb import render_template
+    from responses import polite_short
+
+# ============== 基础配置 ==============
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+app = Flask(
+    __name__,
+    static_folder=os.path.join(BASE_DIR, "frontend"),
+    static_url_path=""
+)
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": [os.getenv("FRONTEND_ORIGIN", "http://3.71.28.18:3000")]}})
+
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=[os.getenv("FRONTEND_ORIGIN", "http://3.71.28.18:3000")],
+    async_mode="gevent",
+    max_http_buffer_size=20 * 1024 * 1024
+)
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+
+# ============== 配置中心 ==============
+class ConfigStore:
+    def __init__(self):
+        base_url = os.getenv("API_BASE_URL", "http://3.71.28.18:5000")
+        self.config = {
+            "API_BASE_URL": base_url,
+            "DEFAULT_CLIENT_LANG": os.getenv("DEFAULT_CLIENT_LANG", "fr"),
+            "TRANSLATION_ENABLED": os.getenv("TRANSLATION_ENABLED", "true").lower() != "false",
+            "MAX_MESSAGE_LENGTH": int(os.getenv("MAX_MESSAGE_LENGTH", "500"))
+        }
+
+config_store = ConfigStore()
+
+# ============== 翻译层（无重依赖，纯 requests�?==============
+LIBRE_ENDPOINTS = [
+    # 多个公共端点，任何可用即�?
+    "https://libretranslate.de/translate",
+    "https://translate.astian.org/translate",
+    "https://libretranslate.com/translate",
+]
+
+# 允许通过环境变量覆盖翻译端点（逗号分隔�?_env_eps = os.getenv("LIBRE_ENDPOINTS", "").strip()
+if _env_eps:
+    LIBRE_ENDPOINTS = [u.strip() for u in _env_eps.split(",") if u.strip()]
+    logging.info("[翻译配置] 使用环境端点 LIBRE_ENDPOINTS=%s", LIBRE_ENDPOINTS)
+
+def safe_translate_old(text: str, target: str, source: str = "auto", timeout: float = 5.0) -> str:
+    """
+    使用多个 LibreTranslate 端点级联翻译�?
+    - 成功：返回译�?
+    - 失败：返回原文，并在日志打印告警
+    """
+    text = (text or "").strip()
+    if not text or not config_store.config["TRANSLATION_ENABLED"]:
+        return text
+
+    payload = {"q": text, "source": source or "auto", "target": target, "format": "text"}
+    headers = {"Content-Type": "application/json"}
+
+    WARN_ON_ERROR = os.getenv("TRANSLATION_WARN_ON_ERROR", "true").lower() != "false"
+    log = logging.warning if WARN_ON_ERROR else logging.info
+    for url in LIBRE_ENDPOINTS:
+        try:
+            resp = requests.post(url, data=json.dumps(payload), headers=headers, timeout=timeout)
+            if resp.ok:
+                data = resp.json()
+                out = (data.get("translatedText") or "").strip()
+                if out:
+                    return out
+                else:
+                    log(f"[翻译失败-空返回] endpoint={url}")
+            else:
+                log(f"[翻译失败-HTTP{resp.status_code}] endpoint={url} text={text[:60]}")
+        except Exception as e:
+            log(f"[翻译异常] endpoint={url} err={e}")
+
+    log("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
+    return text
+
+
+# 兼容覆盖：改进版 safe_translate（优�?JSON，其次表单；auto 时先检测语种；超时可配置）
+TRANSLATION_TIMEOUT = float(os.getenv("TRANSLATION_TIMEOUT_SEC", "5.0"))
+
+
+def safe_translate(text: str, target: str, source: str = "auto", timeout: float = TRANSLATION_TIMEOUT) -> str:
+    text = (text or "").strip()
+    if not text or not config_store.config["TRANSLATION_ENABLED"]:
+        return text
+
+    tgt = (target or "en").strip().lower()[:2] or "en"
+    src = (source or "auto").strip().lower()
+
+    # 最高优先：若目标为中文且文本包�?CJK 统一表意字符，直接返回原文（不触发语言检测与外网请求�?    if tgt == "zh" and any(0x4E00 <= ord(ch) <= 0x9FFF for ch in text):
+        return text
+
+    # 若已明确源语言且与目标一致，直接返回
+    if src != "auto" and (src or "").startswith(tgt):
+        return text
+
+    # 需要检测源语言时才调用（避免不必要的外部请求与告警�?    try:
+        if src == "auto":
+            try:
+                from .policy import detect_lang  # 包内导入
+            except Exception:
+                from policy import detect_lang   # 兼容脚本方式
+            src = (detect_lang(text) or "auto").lower()
+    except Exception:
+        pass
+
+    # 检测后再次判断同语种早返回
+    if (src or "").startswith(tgt):
+        return text
+
+    payload = {"q": text, "source": src or "auto", "target": tgt, "format": "text"}
+
+    for url in LIBRE_ENDPOINTS:
+        try:
+            # 先尝�?JSON 提交
+            resp = requests.post(url, json=payload, timeout=timeout)
+            if resp.ok:
+                data = resp.json()
+                out = (data.get("translatedText") or "").strip()
+                if out:
+                    return out
+                else:
+                    logging.warning(f"[翻译失败-空返回] endpoint={url}")
+            else:
+                # �?JSON 返回 400/415/422 等，尝试表单回退
+                if resp.status_code in (400, 415, 422):
+                    try:
+                        resp2 = requests.post(url, data=payload, timeout=timeout)
+                        if resp2.ok:
+                            data2 = resp2.json()
+                            out2 = (data2.get("translatedText") or "").strip()
+                            if out2:
+                                return out2
+                        else:
+                            logging.warning(f"[翻译失败-HTTP{resp2.status_code}-form] endpoint={url} text={text[:60]}")
+                    except Exception as e2:
+                        logging.warning(f"[翻译异常-form] endpoint={url} err={e2}")
+                else:
+                    logging.warning(f"[翻译失败-HTTP{resp.status_code}] endpoint={url} text={text[:60]}")
+        except Exception as e:
+            logging.warning(f"[翻译异常] endpoint={url} err={e}")
+
+    logging.warning("[翻译失败-已回退原文] (可能网络不可达或端点限流) text=%s", text[:80])
+    return text
+
+# ============== 状态与会话 ==============
+init_db()  # 初始化学习库
+
+INACTIVITY_SEC = int(os.getenv("BOT_INACTIVITY_SEC", "30"))   # 无人响应阈值（秒）
+SUPPRESS_WINDOW_SEC = int(os.getenv("BOT_SUPPRESS_SEC", "5")) # 打字抑制窗口（秒�?
+
+session_info = {}                         # sid -> {'role': 'agent'|'client', 'cid': str}
+manual_online_by_cid = {}                 # cid -> bool (True=人工上线/不介�? False=下线/介入)
+suppress_until_by_cid = {}                # cid -> epoch 秒（客服打字抑制到期时间�?
+last_agent_activity_by_cid = {}           # cid -> epoch 秒（客服上次活动时间�?
+last_client_by_cid = {}                   # cid -> {'fr','zh','ts'}  用于自动学习
+last_client_msg_ts_by_cid = {}            # cid -> 最近一条客户消�?token
+
+def _get_sid() -> str:
